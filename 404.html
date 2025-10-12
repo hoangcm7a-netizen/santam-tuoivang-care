@@ -1,0 +1,34 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Redirecting...</title>
+    <script>
+    // Lấy đường dẫn hiện tại
+    var path = window.location.pathname;
+
+    // Kiểm tra xem trang có phải đã lỗi 404 không
+    if (path.indexOf('404.html') > -1) {
+        // Thay thế tên repository của bạn tại đây:
+        window.location.replace('/santam-tuoivang-care/');
+    } else {
+        // Đây là mẹo: chuyển hướng đến trang gốc (index.html) của repository.
+        // Điều này đảm bảo React Router sẽ tiếp quản và xử lý đường dẫn
+        var segmentCount = (path.match(/\//g) || []).length;
+
+        // Xây dựng đường dẫn gốc của repository
+        var rootPath = '';
+        for (var i = 0; i < segmentCount; i++) {
+            rootPath += '../';
+        }
+
+        // Chuyển hướng người dùng đến trang 404.html, trang này sau đó
+        // sẽ kích hoạt React Router
+        window.location.replace(rootPath + '404.html');
+    }
+    </script>
+</head>
+<body>
+    <p>Redirecting to home...</p>
+</body>
+</html>
