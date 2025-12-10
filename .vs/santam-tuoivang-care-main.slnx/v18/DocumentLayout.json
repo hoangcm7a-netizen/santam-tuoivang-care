@@ -3,36 +3,12 @@
   "WorkspaceRootPath": "C:\\Users\\DELL\\Desktop\\santam-tuoivang-care-main\\santam-tuoivang-care-main\\",
   "Documents": [
     {
-      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\DELL\\Desktop\\santam-tuoivang-care-main\\santam-tuoivang-care-main\\src\\pages\\ProjectInfoBtn.tsx||{8B382828-6202-11D1-8870-0000F87579D2}",
-      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:src\\pages\\ProjectInfoBtn.tsx||{8B382828-6202-11D1-8870-0000F87579D2}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\DELL\\Desktop\\santam-tuoivang-care-main\\santam-tuoivang-care-main\\src\\components\\Navigation.tsx||{0F2454B1-A556-402D-A7D0-1FDE7F99DEE0}",
-      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:src\\components\\Navigation.tsx||{0F2454B1-A556-402D-A7D0-1FDE7F99DEE0}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\DELL\\Desktop\\santam-tuoivang-care-main\\santam-tuoivang-care-main\\src\\pages\\About.tsx||{0F2454B1-A556-402D-A7D0-1FDE7F99DEE0}",
-      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:src\\pages\\About.tsx||{0F2454B1-A556-402D-A7D0-1FDE7F99DEE0}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\DELL\\Desktop\\santam-tuoivang-care-main\\santam-tuoivang-care-main\\src\\pages\\Contact.tsx||{0F2454B1-A556-402D-A7D0-1FDE7F99DEE0}",
-      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:src\\pages\\Contact.tsx||{0F2454B1-A556-402D-A7D0-1FDE7F99DEE0}"
-    },
-    {
       "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\DELL\\Desktop\\santam-tuoivang-care-main\\santam-tuoivang-care-main\\src\\pages\\Home.tsx||{0F2454B1-A556-402D-A7D0-1FDE7F99DEE0}",
       "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:src\\pages\\Home.tsx||{0F2454B1-A556-402D-A7D0-1FDE7F99DEE0}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\DELL\\Desktop\\santam-tuoivang-care-main\\santam-tuoivang-care-main\\src\\pages\\Index.tsx||{0F2454B1-A556-402D-A7D0-1FDE7F99DEE0}",
-      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:src\\pages\\Index.tsx||{0F2454B1-A556-402D-A7D0-1FDE7F99DEE0}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\DELL\\Desktop\\santam-tuoivang-care-main\\santam-tuoivang-care-main\\src\\pages\\NotFound.tsx||{0F2454B1-A556-402D-A7D0-1FDE7F99DEE0}",
-      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:src\\pages\\NotFound.tsx||{0F2454B1-A556-402D-A7D0-1FDE7F99DEE0}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\DELL\\Desktop\\santam-tuoivang-care-main\\santam-tuoivang-care-main\\index.html||{40D31677-CBC0-4297-A9EF-89D907823A98}",
-      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:index.html||{40D31677-CBC0-4297-A9EF-89D907823A98}"
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\DELL\\Desktop\\santam-tuoivang-care-main\\santam-tuoivang-care-main\\src\\components\\Navigation.tsx||{0F2454B1-A556-402D-A7D0-1FDE7F99DEE0}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:src\\components\\Navigation.tsx||{0F2454B1-A556-402D-A7D0-1FDE7F99DEE0}"
     }
   ],
   "DocumentGroupContainers": [
@@ -47,66 +23,14 @@
             {
               "$type": "Document",
               "DocumentIndex": 0,
-              "Title": "ProjectInfoBtn.tsx",
-              "DocumentMoniker": "C:\\Users\\DELL\\Desktop\\santam-tuoivang-care-main\\santam-tuoivang-care-main\\src\\pages\\ProjectInfoBtn.tsx",
-              "RelativeDocumentMoniker": "src\\pages\\ProjectInfoBtn.tsx",
-              "ToolTip": "C:\\Users\\DELL\\Desktop\\santam-tuoivang-care-main\\santam-tuoivang-care-main\\src\\pages\\ProjectInfoBtn.tsx",
-              "RelativeToolTip": "src\\pages\\ProjectInfoBtn.tsx",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAMAAAAsAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003213|",
-              "WhenOpened": "2025-12-10T16:55:58.303Z",
-              "EditorCaption": ""
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 2,
-              "Title": "About.tsx",
-              "DocumentMoniker": "C:\\Users\\DELL\\Desktop\\santam-tuoivang-care-main\\santam-tuoivang-care-main\\src\\pages\\About.tsx",
-              "RelativeDocumentMoniker": "src\\pages\\About.tsx",
-              "ToolTip": "C:\\Users\\DELL\\Desktop\\santam-tuoivang-care-main\\santam-tuoivang-care-main\\src\\pages\\About.tsx",
-              "RelativeToolTip": "src\\pages\\About.tsx",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003213|",
-              "WhenOpened": "2025-12-10T16:55:43.46Z",
-              "EditorCaption": ""
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 3,
-              "Title": "Contact.tsx",
-              "DocumentMoniker": "C:\\Users\\DELL\\Desktop\\santam-tuoivang-care-main\\santam-tuoivang-care-main\\src\\pages\\Contact.tsx",
-              "RelativeDocumentMoniker": "src\\pages\\Contact.tsx",
-              "ToolTip": "C:\\Users\\DELL\\Desktop\\santam-tuoivang-care-main\\santam-tuoivang-care-main\\src\\pages\\Contact.tsx",
-              "RelativeToolTip": "src\\pages\\Contact.tsx",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003213|",
-              "WhenOpened": "2025-12-10T16:55:42.683Z",
-              "EditorCaption": ""
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 4,
               "Title": "Home.tsx",
               "DocumentMoniker": "C:\\Users\\DELL\\Desktop\\santam-tuoivang-care-main\\santam-tuoivang-care-main\\src\\pages\\Home.tsx",
               "RelativeDocumentMoniker": "src\\pages\\Home.tsx",
               "ToolTip": "C:\\Users\\DELL\\Desktop\\santam-tuoivang-care-main\\santam-tuoivang-care-main\\src\\pages\\Home.tsx",
               "RelativeToolTip": "src\\pages\\Home.tsx",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "ViewState": "AgIAABcAAAAAAAAAAAAQwCYAAABbAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003213|",
-              "WhenOpened": "2025-12-10T16:55:41.747Z",
-              "EditorCaption": ""
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 6,
-              "Title": "NotFound.tsx",
-              "DocumentMoniker": "C:\\Users\\DELL\\Desktop\\santam-tuoivang-care-main\\santam-tuoivang-care-main\\src\\pages\\NotFound.tsx",
-              "RelativeDocumentMoniker": "src\\pages\\NotFound.tsx",
-              "ToolTip": "C:\\Users\\DELL\\Desktop\\santam-tuoivang-care-main\\santam-tuoivang-care-main\\src\\pages\\NotFound.tsx",
-              "RelativeToolTip": "src\\pages\\NotFound.tsx",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003213|",
-              "WhenOpened": "2025-12-10T16:55:39.939Z",
+              "WhenOpened": "2025-12-10T17:44:28.399Z",
               "EditorCaption": ""
             },
             {
@@ -117,35 +41,9 @@
               "RelativeDocumentMoniker": "src\\components\\Navigation.tsx",
               "ToolTip": "C:\\Users\\DELL\\Desktop\\santam-tuoivang-care-main\\santam-tuoivang-care-main\\src\\components\\Navigation.tsx",
               "RelativeToolTip": "src\\components\\Navigation.tsx",
-              "ViewState": "AgIAAE8AAAAAAAAAAAAQwGAAAAAlAAAAAAAAAA==",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003213|",
-              "WhenOpened": "2025-12-10T16:55:23.411Z",
-              "EditorCaption": ""
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 5,
-              "Title": "Index.tsx",
-              "DocumentMoniker": "C:\\Users\\DELL\\Desktop\\santam-tuoivang-care-main\\santam-tuoivang-care-main\\src\\pages\\Index.tsx",
-              "RelativeDocumentMoniker": "src\\pages\\Index.tsx",
-              "ToolTip": "C:\\Users\\DELL\\Desktop\\santam-tuoivang-care-main\\santam-tuoivang-care-main\\src\\pages\\Index.tsx",
-              "RelativeToolTip": "src\\pages\\Index.tsx",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAAA4AAAAAAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003213|",
-              "WhenOpened": "2025-12-10T16:09:33.699Z",
-              "EditorCaption": ""
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 7,
-              "Title": "index.html",
-              "DocumentMoniker": "C:\\Users\\DELL\\Desktop\\santam-tuoivang-care-main\\santam-tuoivang-care-main\\index.html",
-              "RelativeDocumentMoniker": "index.html",
-              "ToolTip": "C:\\Users\\DELL\\Desktop\\santam-tuoivang-care-main\\santam-tuoivang-care-main\\index.html",
-              "RelativeToolTip": "index.html",
-              "ViewState": "AgIAABMAAAAAAAAAAAAAABwAAAAAAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001512|",
-              "WhenOpened": "2025-12-10T15:35:46.101Z",
+              "WhenOpened": "2025-12-10T17:44:27.74Z",
               "EditorCaption": ""
             }
           ]

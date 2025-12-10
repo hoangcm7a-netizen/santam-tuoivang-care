@@ -1,10 +1,12 @@
 {
   "ExpandedNodes": [
     "",
+    "\\public",
     "\\src",
+    "\\src\\assets",
     "\\src\\components",
     "\\src\\pages"
   ],
-  "SelectedNode": "\\src\\components\\Navigation.tsx",
+  "SelectedNode": "\\src\\pages\\Home.tsx",
   "PreviewInSolutionExplorer": false
 }

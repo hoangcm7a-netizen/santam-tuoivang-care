@@ -2,7 +2,7 @@ import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Shield, Award, Smartphone, Users, Heart, CheckCircle } from "lucide-react";
-import heroImage from "@/assets/hero-home.jpg";
+import heroImage from "@/assets/LOGO.png";
 import elderlyHappy from "@/assets/elderly-happy.jpg";
 
 const Home = () => {
@@ -36,7 +36,7 @@ const Home = () => {
       <section className="relative min-h-[600px] flex items-center overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-br from-primary via-primary/95 to-primary/90" />
         <div
-          className="absolute inset-0 opacity-20 bg-cover bg-center"
+                  className="absolute inset-0 opacity-20 bg-contain bg-center bg-no-repeat"
           style={{ backgroundImage: `url(${heroImage})` }}
         />
         

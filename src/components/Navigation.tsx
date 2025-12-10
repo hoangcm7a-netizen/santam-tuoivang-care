@@ -24,13 +24,11 @@ const Navigation = () => {
                 <div className="flex items-center justify-between h-20">
                     {/* Logo */}
                     <Link to="/" className="flex items-center gap-2 group">
-                        <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center transition-transform group-hover:scale-105">
-                            <Heart className="w-6 h-6 text-primary-foreground" />
-                        </div>
-                        <div className="hidden md:block">
-                            <div className="text-xl font-bold text-primary">An Tâm Tuổi Vàng</div>
-                            <div className="text-xs text-muted-foreground">Chăm Sóc Tận Tâm</div>
-                        </div>
+                        <img
+                            src="/LOGO.png"
+                            alt="An Tâm Tuổi Vàng Logo"
+                            className="h-14 w-auto object-contain transition-transform group-hover:scale-105"
+                        />
                     </Link>
 
                     {/* Desktop Navigation (Giao diện máy tính) */}
