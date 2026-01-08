@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom"; // <-- Thêm useNavigate
 import { Menu, X, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ProjectInfoBtn } from "@/pages/ProjectInfoBtn";
@@ -8,12 +8,23 @@ import { useAuth } from '@/lib/AuthContext';
 const Navigation = () => {
     const [isOpen, setIsOpen] = useState(false);
     const location = useLocation();
+    const navigate = useNavigate(); // <-- Khai báo hook điều hướng
     
-    // Lấy thông tin user từ Context
     const { user, profile, signOut } = useAuth();
 
+    // Logic chuyển hướng trang chủ
+    const getHomeLink = () => {
+        if (!user || !profile) return "/";
+        if (profile.role === 'customer') return "/customer-dashboard";
+        if (profile.role === 'staff') return "/staff-dashboard";
+        if (profile.role === 'admin') return "/admin-dashboard";
+        return "/";
+    };
+
+    const homeLink = getHomeLink();
+
     const links = [
-        { name: "Trang Chủ", path: "/" },
+        { name: "Trang Chủ", path: homeLink },
         { name: "Dịch Vụ", path: "/services" },
         { name: "Về Chúng Tôi", path: "/about" },
         { name: "Liên Hệ", path: "/contact" },
@@ -21,12 +32,19 @@ const Navigation = () => {
 
     const isActive = (path: string) => location.pathname === path;
 
+    // --- HÀM ĐĂNG XUẤT CHUẨN ---
+    const handleLogout = async () => {
+        await signOut();      // 1. Đăng xuất khỏi hệ thống
+        navigate('/');        // 2. Chuyển ngay về trang chủ
+        setIsOpen(false);     // 3. Đóng menu mobile (nếu đang mở)
+    };
+
     return (
         <nav className="fixed top-0 left-0 right-0 z-50 bg-background/95 backdrop-blur-sm border-b border-border">
             <div className="container mx-auto px-4">
                 <div className="flex items-center justify-between h-20">
-                    {/* Logo */}
-                    <Link to="/" className="flex items-center gap-2 group">
+                    
+                    <Link to={homeLink} className="flex items-center gap-2 group">
                         <img
                             src="/LOGO.png"
                             alt="An Tâm Tuổi Vàng Logo"
@@ -51,17 +69,14 @@ const Navigation = () => {
 
                         <ProjectInfoBtn />
 
-                        {/* --- NÚT DÀNH RIÊNG CHO NHÂN VIÊN --- */}
                         {profile?.role === 'staff' && (
                             <Button asChild variant="ghost" className="text-blue-600 font-bold hover:text-blue-700 hover:bg-blue-50 px-2">
                                 <Link to="/test-video">📋 Báo cáo ca làm</Link>
                             </Button>
                         )}
 
-                        {/* --- LOGIC ĐĂNG NHẬP (DESKTOP) --- */}
                         {user ? (
                             <div className="flex items-center gap-3 pl-4 border-l border-gray-200">
-                                {/* Bấm vào tên để xem hồ sơ */}
                                 <Link to="/profile" className="text-right hidden lg:block cursor-pointer hover:opacity-70 transition-opacity">
                                     <p className="text-sm font-bold text-primary truncate max-w-[150px]">
                                         {profile?.full_name || 'Người dùng'}
@@ -74,7 +89,7 @@ const Navigation = () => {
                                 <Button 
                                     variant="ghost" 
                                     size="sm" 
-                                    onClick={signOut}
+                                    onClick={handleLogout} // <-- Sử dụng hàm đăng xuất mới
                                     className="text-red-500 hover:text-red-600 hover:bg-red-50"
                                 >
                                     Đăng xuất
@@ -103,7 +118,6 @@ const Navigation = () => {
                 {/* Mobile Navigation */}
                 {isOpen && (
                     <div className="md:hidden pb-4 pt-2 space-y-2 border-t border-border mt-2 bg-white">
-                        {/* Header Mobile: Thông tin người dùng */}
                         {user && (
                             <Link 
                                 to="/profile" 
@@ -122,7 +136,6 @@ const Navigation = () => {
                             </Link>
                         )}
 
-                        {/* Các link chính */}
                         {links.map((link) => (
                             <Link
                                 key={link.path}
@@ -137,7 +150,6 @@ const Navigation = () => {
                             </Link>
                         ))}
 
-                        {/* Nút dành cho nhân viên (Mobile) */}
                         {profile?.role === 'staff' && (
                             <Link
                                 to="/test-video"
@@ -154,10 +166,7 @@ const Navigation = () => {
 
                         <div className="px-4 pt-2 space-y-2">
                             {user ? (
-                                <Button variant="outline" className="w-full text-red-500 border-red-200 hover:bg-red-50" onClick={() => {
-                                    signOut();
-                                    setIsOpen(false);
-                                }}>
+                                <Button variant="outline" className="w-full text-red-500 border-red-200 hover:bg-red-50" onClick={handleLogout}> {/* <-- Sử dụng hàm đăng xuất mới */}
                                     Đăng xuất
                                 </Button>
                             ) : (

@@ -7,7 +7,8 @@ type Profile = {
   id: string;
   full_name: string;
   role: 'staff' | 'customer' | 'admin';
-  phone: string | null; // <-- THÊM DÒNG NÀY
+  phone: string | null;
+  specialties: string | null;
 };
 
 // Tạo Context

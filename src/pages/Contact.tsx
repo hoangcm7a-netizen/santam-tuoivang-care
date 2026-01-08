@@ -54,7 +54,7 @@ const Contact = () => {
     }
   }, [user, profile]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     // Check đăng nhập
@@ -90,21 +90,35 @@ const Contact = () => {
       return;
     }
 
-    // --- GỬI DỮ LIỆU ---
-    // Ở đây bạn có thể thêm logic lưu vào Database (bảng bookings/contacts)
-    // Bao gồm cả selectedPatientId
-    console.log("Gửi yêu cầu:", { ...formData, patient_id: selectedPatientId });
+    // --- GỬI DỮ LIỆU (CẬP NHẬT) ---
+    try {
+        const { error } = await supabase.from('contacts').insert([
+            {
+                user_id: user.id,
+                name: formData.name,
+                email: formData.email,
+                phone: formData.phone,
+                message: formData.message, 
+                status: 'new'
+            }
+        ]);
+        
+        if (error) throw error;
 
-    toast.success("Đã gửi yêu cầu thành công! Chúng tôi sẽ liên hệ để tư vấn cho hồ sơ bạn đã chọn.");
-    
-    // Reset form
-    setFormData({ name: "", email: "", phone: "", message: "" });
-    setSelectedPatientId(null);
+        toast.success("Đã gửi yêu cầu thành công! Chúng tôi sẽ liên hệ sớm nhất.");
+        
+        // Reset form
+        setFormData({ name: "", email: "", phone: "", message: "" });
+        setSelectedPatientId(null);
+
+    } catch (err: any) {
+        toast.error("Lỗi khi gửi: " + err.message);
+    }
   };
 
   // ... (Giữ nguyên mảng contactInfo và supportChannels như code cũ) ...
   const contactInfo = [
-    { icon: <Phone className="w-6 h-6" />, title: "Điện Thoại", content: "0372054418", subtext: "Nguyễn Thị Thu Nga" },
+      { icon: <Phone className="w-6 h-6" />, title: "Điện Thoại", content: "0372054418", subtext: "Lê Thị Phương Anh" },
     { icon: <Mail className="w-6 h-6" />, title: "Email", content: "ntthunga3@gmail.com", subtext: "Phản hồi trong 24h" },
     { icon: <MapPin className="w-6 h-6" />, title: "Địa Chỉ", content: "Thanh Hóa, Việt Nam", subtext: "Trường CĐ Y tế Thanh Hóa" },
     { icon: <Clock className="w-6 h-6" />, title: "Giờ Làm Việc", content: "8:00 - 20:00", subtext: "Thứ 2 - Chủ Nhật" },

@@ -4,10 +4,10 @@ import teamPhoto from "@/assets/team-photo.jpg";
 
 const About = () => {
   const team = [
-    { name: "Nguyễn Thị Thu Nga", role: "Trưởng nhóm", department: "Dược" },
-    { name: "Trần Thị Minh Ánh", role: "Thành viên", department: "Điều Dưỡng" },
-    { name: "Lê Thị Phương Anh", role: "Thành viên", department: "Y Tế" },
-    { name: "Trương Thị Huyền", role: "Thành viên", department: "Y Tế" },
+      { name: "Lê Thị Phương Anh", role: "Trưởng nhóm", department: "Điều Dưỡng" },
+    { name: "Hoàng Hà Giang", role: "Thành viên", department: "Điều Dưỡng" },
+      { name: "Nguyễn Thị Thu Nga", role: "Thành viên", department: "Dược" },
+    { name: "Trương Thị Huyền", role: "Thành viên", department: "Điều Dưỡng" },
     { name: "Hoàng Huy", role: "Thành viên", department: "Công Nghệ Thông Tin" },
   ];
 

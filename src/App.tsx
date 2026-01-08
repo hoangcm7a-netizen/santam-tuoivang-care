@@ -13,7 +13,12 @@ import TestVideo from "./pages/TestVideo";
 import { AuthProvider } from "@/lib/AuthContext";
 import AuthPage from "./pages/Auth";
 import Profile from "./pages/Profile";
-import EmailConfirmed from "./pages/EmailConfirmed";  
+import EmailConfirmed from "./pages/EmailConfirmed";
+import CustomerDashboard from "./pages/CustomerDashboard";
+import StaffDashboard from "./pages/StaffDashboard";
+import AdminDashboard from "./pages/AdminDashboard";
+import Messages from "./pages/Messages";
+import ChatRoom from "./pages/ChatRoom";
 
 const queryClient = new QueryClient();
 
@@ -34,6 +39,11 @@ const App = () => (
               <Route path="/profile" element={<Profile />} />
               <Route path="/test-video" element={<TestVideo />} />
               <Route path="/email-confirmed" element={<EmailConfirmed />} />
+              <Route path="/customer-dashboard" element={<CustomerDashboard />} />
+              <Route path="/staff-dashboard" element={<StaffDashboard />} />
+              <Route path="/admin-dashboard" element={<AdminDashboard />} />
+              <Route path="/messages" element={<Messages />} />
+              <Route path="/chat/:id" element={<ChatRoom />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </Layout>
