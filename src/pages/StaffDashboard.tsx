@@ -2,52 +2,47 @@ import { useState, useEffect } from "react";
 import { useAuth } from "@/lib/AuthContext";
 import Navigation from "@/components/Navigation";
 import { Link } from "react-router-dom";
-import { Clock, MapPin, Video, Wallet, Mail, MessageCircle } from "lucide-react";
+import { Clock, MapPin, Video, MessageCircle, CheckCircle, LogOut, Camera, Wallet, History, X, ArrowUpRight, ArrowDownLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/lib/supabase";
+import { AttendanceModal } from "@/components/AttendanceModal";
+import { VideoUploadModal } from "@/components/VideoUploadModal";
 
 const StaffDashboard = () => {
   const { user, profile } = useAuth();
-  
-  // State lưu danh sách đơn được giao
   const [assignedContacts, setAssignedContacts] = useState<any[]>([]);
+  
+  // State Ví tiền & Lịch sử
+  const [balance, setBalance] = useState(0);
+  const [transactions, setTransactions] = useState<any[]>([]);
+  const [showHistory, setShowHistory] = useState(false);
 
-  // Dữ liệu giả định cho Ca làm (Sau này bạn có thể thay bằng API thật nếu muốn)
-  const todayTasks = [
-    {
-      id: 1,
-      time: "08:00 - 10:00",
-      customer: "Cụ Nguyễn Văn A",
-      address: "123 Lê Lợi, TP Thanh Hóa",
-      status: "pending", 
-      notes: "Cụ bị lãng tai, cần nói to.",
-    },
-    {
-      id: 2,
-      time: "14:00 - 16:00",
-      customer: "Bà Trần Thị B",
-      address: "456 Quang Trung, TP Thanh Hóa",
-      status: "pending",
-      notes: "Nhớ nhắc bà uống thuốc huyết áp.",
-    },
-  ];
+  // State Modal
+  const [attendanceModal, setAttendanceModal] = useState<{isOpen: boolean, id: string, type: 'check-in' | 'check-out'} | null>(null);
+  const [videoModal, setVideoModal] = useState<{isOpen: boolean, id: string} | null>(null);
 
-  // Tải danh sách đơn tư vấn được Admin giao cho nhân viên này
   useEffect(() => {
     if (user) {
-        const fetchAssigned = async () => {
-            const { data } = await supabase
-                .from('contacts')
-                .select('*')
-                .eq('assigned_staff_id', user.id) // Lọc theo ID nhân viên
-                .neq('status', 'done') // Chỉ hiện những đơn chưa hoàn tất
-                .order('created_at', { ascending: false });
-            
-            if (data) setAssignedContacts(data);
-        };
         fetchAssigned();
+        fetchWalletInfo();
     }
   }, [user]);
+
+  // Lấy thông tin ví và công việc
+  const fetchAssigned = async () => {
+    const { data } = await supabase.from('contacts').select('*').eq('assigned_staff_id', user?.id).order('created_at', { ascending: false });
+    if (data) setAssignedContacts(data);
+  };
+
+  const fetchWalletInfo = async () => {
+      // 1. Lấy số dư mới nhất
+      const { data: profileData } = await supabase.from('profiles').select('wallet_balance').eq('id', user?.id).single();
+      if (profileData) setBalance(profileData.wallet_balance || 0);
+
+      // 2. Lấy lịch sử giao dịch
+      const { data: transData } = await supabase.from('transactions').select('*').eq('user_id', user?.id).order('created_at', { ascending: false });
+      if (transData) setTransactions(transData);
+  };
 
   return (
     <div className="min-h-screen bg-gray-50 pb-20">
@@ -55,100 +50,155 @@ const StaffDashboard = () => {
       
       <div className="container mx-auto px-4 pt-28">
         
-        {/* Header + Trạng thái */}
-        <div className="flex justify-between items-start mb-6">
+        {/* HEADER CHÀO MỪNG */}
+        <div className="flex justify-between items-center mb-6">
             <div>
-                <h1 className="text-2xl font-bold text-gray-800">
-                    Chào {profile?.full_name?.split(' ').pop()}! 👩‍⚕️
-                </h1>
+                <h1 className="text-2xl font-bold text-gray-800">Chào {profile?.full_name}! 👩‍⚕️</h1>
                 <p className="text-sm text-gray-500">Chúc bạn một ngày làm việc hiệu quả.</p>
             </div>
-            <div className="bg-green-100 text-green-700 px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1">
-                <span className="w-2 h-2 bg-green-600 rounded-full animate-pulse"></span> Đang nhận việc
+        </div>
+
+        {/* --- KHU VỰC VÍ TIỀN (MỚI) --- */}
+        <div className="bg-gradient-to-r from-blue-600 to-indigo-600 rounded-xl p-6 text-white shadow-lg mb-8 relative overflow-hidden">
+            <div className="absolute top-0 right-0 p-4 opacity-10"><Wallet size={120} /></div>
+            <div className="relative z-10">
+                <p className="text-blue-100 text-sm font-medium mb-1 flex items-center gap-2">
+                    <Wallet size={16}/> Số dư ví thu nhập
+                </p>
+                <h2 className="text-4xl font-bold mb-4">{balance.toLocaleString()} đ</h2>
+                <Button 
+                    variant="secondary" 
+                    size="sm" 
+                    className="bg-white/20 hover:bg-white/30 text-white border-0 backdrop-blur-sm"
+                    onClick={() => setShowHistory(true)}
+                >
+                    <History size={14} className="mr-2"/> Xem lịch sử giao dịch
+                </Button>
             </div>
         </div>
 
-        {/* --- KHU VỰC MỚI: HỘP THƯ TƯ VẤN ĐƯỢC GIAO --- */}
-        <div className="mb-8">
-            <h3 className="font-bold text-gray-800 text-lg mb-4 flex items-center gap-2">
-                <Mail className="text-blue-500" /> Đơn tư vấn cần hỗ trợ ({assignedContacts.length})
-            </h3>
-            
-            <div className="space-y-3">
-                {assignedContacts.length === 0 && (
-                    <p className="text-gray-400 italic text-sm bg-white p-4 rounded-xl border border-dashed text-center">
-                        Chưa có đơn tư vấn nào được giao.
-                    </p>
-                )}
-                
-                {assignedContacts.map((c) => (
-                    <div key={c.id} className="bg-white p-4 rounded-xl border border-blue-100 shadow-sm flex justify-between items-center hover:shadow-md transition">
-                        <div className="flex-1 min-w-0 pr-4">
-                            <p className="font-bold text-gray-800 truncate">{c.name}</p>
-                            <p className="text-xs text-gray-500 truncate">{c.message}</p>
-                            <p className="text-[10px] text-gray-400 mt-1">{new Date(c.created_at).toLocaleString('vi-VN')}</p>
-                        </div>
-                        <Button asChild size="sm" className="bg-blue-600 hover:bg-blue-700 shrink-0">
-                            <Link to={`/chat/${c.id}`}> {/* Dẫn sang trang ChatRoom */}
-                                <MessageCircle size={16} className="mr-2"/> Chat ngay
-                            </Link>
-                        </Button>
-                    </div>
-                ))}
-            </div>
-        </div>
-        {/* ------------------------------------------------ */}
-
-        {/* Thống kê nhanh */}
-        <div className="bg-gradient-to-r from-blue-600 to-blue-500 rounded-xl p-6 text-white shadow-lg mb-8">
-            <div className="flex items-center gap-3 mb-2">
-                <Wallet className="opacity-80" />
-                <span className="text-sm font-medium opacity-90">Thu nhập tháng này</span>
-            </div>
-            <h2 className="text-3xl font-bold">5.450.000 đ</h2>
-            <p className="text-xs opacity-70 mt-1">Đã hoàn thành 12 ca chăm sóc</p>
-        </div>
-
-        {/* Danh sách công việc hôm nay (Ca làm) */}
-        <h3 className="font-bold text-gray-800 text-lg mb-4 flex items-center gap-2">
-            <Clock className="text-orange-500" /> Ca làm hôm nay
+        {/* DANH SÁCH VIỆC CẦN LÀM */}
+        <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
+            <Clock className="text-orange-500"/> Việc cần làm hôm nay
         </h3>
 
         <div className="space-y-4">
-            {todayTasks.map((task) => (
-                <div key={task.id} className="bg-white p-5 rounded-xl border border-gray-100 shadow-sm hover:shadow-md transition">
-                    <div className="flex justify-between mb-3">
-                        <span className="bg-gray-100 text-gray-700 px-2 py-1 rounded text-xs font-bold font-mono">
-                            {task.time}
-                        </span>
-                        <span className="text-orange-600 font-bold text-sm">Chưa bắt đầu</span>
-                    </div>
-                    
-                    <h4 className="text-lg font-bold text-gray-800 mb-1">{task.customer}</h4>
-                    
-                    <div className="flex items-start gap-2 text-gray-500 text-sm mb-3">
-                        <MapPin size={16} className="mt-0.5 shrink-0" />
-                        <span>{task.address}</span>
-                    </div>
+            {assignedContacts.map((c) => {
+                const isCheckedIn = !!c.check_in_time;
+                const isCheckedOut = !!c.check_out_time;
 
-                    <div className="bg-yellow-50 text-yellow-800 text-xs p-2 rounded mb-4">
-                        💡 <strong>Lưu ý:</strong> {task.notes}
-                    </div>
+                return (
+                    <div key={c.id} className="bg-white p-5 rounded-xl border border-gray-100 shadow-sm">
+                        <div className="flex justify-between mb-3">
+                            <span className="bg-gray-100 text-gray-700 px-2 py-1 rounded text-xs font-bold font-mono flex items-center gap-1">
+                                <Clock size={12}/> {new Date(c.created_at).toLocaleDateString()}
+                            </span>
+                            <span className={`text-xs font-bold px-2 py-1 rounded-full ${isCheckedOut ? 'bg-green-100 text-green-700' : isCheckedIn ? 'bg-blue-100 text-blue-700' : 'bg-orange-100 text-orange-700'}`}>
+                                {isCheckedOut ? 'Đã hoàn thành' : isCheckedIn ? 'Đang làm việc' : 'Chưa bắt đầu'}
+                            </span>
+                        </div>
+                        
+                        <h4 className="text-lg font-bold text-gray-800 mb-1">{c.name}</h4>
+                        <div className="flex items-start gap-2 text-gray-500 text-sm mb-4">
+                            <MapPin size={16} className="mt-0.5 shrink-0 text-red-500" />
+                            <span>{c.address || "Địa chỉ chưa cập nhật"}</span>
+                        </div>
 
-                    <div className="grid grid-cols-2 gap-3">
-                        <Button variant="outline" className="w-full">
-                            Check-in
-                        </Button>
-                        <Button asChild className="w-full bg-[#e67e22] hover:bg-[#d35400]">
-                            <Link to="/test-video">
-                                <Video className="w-4 h-4 mr-2" /> Báo cáo
-                            </Link>
-                        </Button>
+                        <div className="grid grid-cols-2 gap-3">
+                            <Button asChild variant="outline" className="w-full col-span-2 border-blue-200 text-blue-600 hover:bg-blue-50">
+                                <Link to={`/chat/${c.id}`}><MessageCircle className="w-4 h-4 mr-2" /> Trao đổi với khách</Link>
+                            </Button>
+
+                            {!isCheckedIn ? (
+                                <Button className="w-full col-span-2 bg-green-600 hover:bg-green-700 py-6"
+                                    onClick={() => setAttendanceModal({isOpen: true, id: c.id, type: 'check-in'})}>
+                                    <Camera className="w-5 h-5 mr-2"/> Bắt đầu ca (Check-in)
+                                </Button>
+                            ) : !isCheckedOut ? (
+                                <>
+                                    <Button className="w-full bg-orange-500 hover:bg-orange-600 text-white"
+                                        onClick={() => setVideoModal({isOpen: true, id: c.id})}>
+                                        <Video className="w-4 h-4 mr-2" /> Nộp Video
+                                    </Button>
+                                    <Button variant="destructive" className="w-full"
+                                        onClick={() => setAttendanceModal({isOpen: true, id: c.id, type: 'check-out'})}>
+                                        <LogOut className="w-4 h-4 mr-2" /> Kết thúc ca
+                                    </Button>
+                                </>
+                            ) : (
+                                <Button disabled variant="secondary" className="w-full col-span-2 bg-gray-100 text-gray-400">
+                                    <CheckCircle className="w-4 h-4 mr-2" /> Ca làm đã đóng
+                                </Button>
+                            )}
+                        </div>
                     </div>
-                </div>
-            ))}
+                );
+            })}
         </div>
       </div>
+
+      {/* --- MODAL LỊCH SỬ GIAO DỊCH (ĐÃ CẬP NHẬT HIỂN THỊ LÝ DO) --- */}
+      {showHistory && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center px-4 bg-black/60 backdrop-blur-sm">
+            <div className="bg-white rounded-xl w-full max-w-md p-0 animate-in zoom-in-95 relative max-h-[80vh] flex flex-col overflow-hidden shadow-2xl">
+                
+                {/* Header Modal */}
+                <div className="flex justify-between items-center p-4 border-b bg-gray-50">
+                    <h3 className="text-lg font-bold text-gray-800 flex items-center gap-2">
+                        <History className="text-blue-600"/> Lịch sử biến động số dư
+                    </h3>
+                    <button onClick={() => setShowHistory(false)} className="text-gray-400 hover:text-gray-600 transition"><X size={20}/></button>
+                </div>
+                
+                {/* Body List */}
+                <div className="overflow-y-auto flex-1 p-4 space-y-3 bg-white">
+                    {transactions.length === 0 ? (
+                        <div className="text-center py-8 text-gray-400">
+                            <Wallet className="w-12 h-12 mx-auto mb-2 opacity-20"/>
+                            <p>Chưa có giao dịch nào.</p>
+                        </div>
+                    ) : (
+                        transactions.map((tx) => (
+                            <div key={tx.id} className="flex justify-between items-start p-3 bg-gray-50 rounded-lg border border-gray-100 hover:shadow-sm transition">
+                                <div className="flex items-start gap-3">
+                                    <div className={`p-2 rounded-full mt-1 ${tx.amount > 0 ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600'}`}>
+                                        {tx.amount > 0 ? <ArrowDownLeft size={16}/> : <ArrowUpRight size={16}/>}
+                                    </div>
+                                    <div>
+                                        {/* HIỂN THỊ LÝ DO THƯỞNG Ở ĐÂY */}
+                                        <p className="font-bold text-gray-800 text-sm line-clamp-2">
+                                            {tx.description || (tx.type === 'bonus' ? 'Thưởng nóng' : 'Giao dịch khác')}
+                                        </p>
+                                        <p className="text-[11px] text-gray-500 mt-1 flex items-center gap-1">
+                                            <Clock size={10}/> {new Date(tx.created_at).toLocaleString('vi-VN')}
+                                        </p>
+                                    </div>
+                                </div>
+                                <span className={`font-mono font-bold text-sm whitespace-nowrap ${tx.amount > 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                    {tx.amount > 0 ? '+' : ''}{tx.amount.toLocaleString()} đ
+                                </span>
+                            </div>
+                        ))
+                    )}
+                </div>
+            </div>
+        </div>
+      )}
+
+      {/* Các Modal xử lý khác */}
+      {attendanceModal && (
+          <AttendanceModal 
+            isOpen={true} onClose={() => setAttendanceModal(null)}
+            contactId={attendanceModal.id} type={attendanceModal.type}
+            onSuccess={fetchAssigned}
+          />
+      )}
+      {videoModal && (
+          <VideoUploadModal
+            isOpen={true} onClose={() => setVideoModal(null)}
+            contactId={videoModal.id} staffId={user?.id || ''}
+          />
+      )}
     </div>
   );
 };

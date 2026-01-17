@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { Heart, Phone, Mail, MapPin } from "lucide-react";
+import { Heart, Phone, Mail, MapPin, User } from "lucide-react";
 
 const Footer = () => {
   return (
@@ -21,7 +21,7 @@ const Footer = () => {
 
           {/* Quick Links */}
           <div>
-            <h3 className="font-semibold mb-4">Liên Kết Nhanh</h3>
+            <h3 className="font-semibold mb-4 text-lg">Liên Kết Nhanh</h3>
             <ul className="space-y-2 text-sm">
               <li>
                 <Link to="/" className="text-primary-foreground/80 hover:text-accent transition-colors">
@@ -48,7 +48,7 @@ const Footer = () => {
 
           {/* Services */}
           <div>
-            <h3 className="font-semibold mb-4">Dịch Vụ</h3>
+            <h3 className="font-semibold mb-4 text-lg">Dịch Vụ</h3>
             <ul className="space-y-2 text-sm text-primary-foreground/80">
               <li>Chăm Sóc Y Tế</li>
               <li>Hỗ Trợ Sinh Hoạt</li>
@@ -57,31 +57,60 @@ const Footer = () => {
             </ul>
           </div>
 
-          {/* Contact Info */}
+          {/* Contact Info - CHỈNH SỬA PHẦN NÀY */}
           <div>
-            <h3 className="font-semibold mb-4">Liên Hệ</h3>
-            <ul className="space-y-3 text-sm">
-              <li className="flex items-start gap-2">
-                <Phone className="w-4 h-4 mt-0.5 flex-shrink-0 text-accent" />
-                <span className="text-primary-foreground/80">0973861431</span>
-              </li>
-              <li className="flex items-start gap-2">
-                <Mail className="w-4 h-4 mt-0.5 flex-shrink-0 text-accent" />
-                <span className="text-primary-foreground/80">oanhtrandht@gmail.com</span>
-              </li>
-              <li className="flex items-start gap-2">
-                <MapPin className="w-4 h-4 mt-0.5 flex-shrink-0 text-accent" />
-                <span className="text-primary-foreground/80">Thanh Hóa, Việt Nam</span>
-              </li>
-            </ul>
+            <h3 className="font-semibold mb-4 text-lg">Đội Ngũ Phát Triển</h3>
+            <div className="flex flex-col gap-6">
+              
+              {/* Người thứ 1 */}
+              <div className="space-y-2">
+                <div className="flex items-center gap-2 font-bold text-accent">
+                    <User className="w-4 h-4" />
+                    <span>HHOANG2502</span>
+                </div>
+                <ul className="space-y-1 text-sm pl-6 border-l-2 border-primary-foreground/10">
+                  <li className="flex items-center gap-2">
+                    <Phone className="w-3 h-3 text-primary-foreground/70" />
+                    <span className="text-primary-foreground/80">0917025861</span>
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <Mail className="w-3 h-3 text-primary-foreground/70" />
+                    <span className="text-primary-foreground/80">hoangcm7a@gmail.com</span>
+                  </li>
+                </ul>
+              </div>
+              <div className="space-y-2">
+                <div className="flex items-center gap-2 font-bold text-accent">
+                    <User className="w-4 h-4" />
+                    <span>Lê Duy Chúc</span>
+                </div>
+                <ul className="space-y-1 text-sm pl-6 border-l-2 border-primary-foreground/10">
+                  <li className="flex items-center gap-2">
+                    <Phone className="w-3 h-3 text-primary-foreground/70" />
+                    <span className="text-primary-foreground/80">0856935690</span>
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <Mail className="w-3 h-3 text-primary-foreground/70" />
+                    <span className="text-primary-foreground/80">chucle562@gmail.com</span>
+                  </li>
+                </ul>
+              </div>
+              <div className="pt-2 border-t border-primary-foreground/10">
+                 <div className="flex items-start gap-2 text-sm">
+                    <MapPin className="w-4 h-4 mt-0.5 flex-shrink-0 text-accent" />
+                    <span className="text-primary-foreground/80">Thanh Hóa, Việt Nam</span>
+                 </div>
+              </div>
+
+            </div>
           </div>
         </div>
-
         <div className="border-t border-primary-foreground/20 mt-8 pt-8 text-center text-sm text-primary-foreground/60">
-                  <p>
-                      &copy; 2025 An Tâm Tuổi Vàng.
-                          Dự án từ <strong>Trường Cao đẳng Y tế Thanh Hóa</strong> kết hợp với <strong>Trường Đại Học Hồng Đức</strong>.
-                  </p>
+          <p>
+            &copy; 2025 An Tâm Tuổi Vàng.
+            <br className="md:hidden"/>
+            Dự án từ <strong>Trường Cao đẳng Y tế Thanh Hóa</strong> kết hợp với <strong>Trường Đại Học Hồng Đức</strong>.
+          </p>
         </div>
       </div>
     </footer>

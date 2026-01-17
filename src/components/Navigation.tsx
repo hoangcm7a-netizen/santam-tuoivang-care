@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link, useLocation, useNavigate } from "react-router-dom"; // <-- Thêm useNavigate
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Menu, X, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ProjectInfoBtn } from "@/pages/ProjectInfoBtn";
@@ -8,7 +8,7 @@ import { useAuth } from '@/lib/AuthContext';
 const Navigation = () => {
     const [isOpen, setIsOpen] = useState(false);
     const location = useLocation();
-    const navigate = useNavigate(); // <-- Khai báo hook điều hướng
+    const navigate = useNavigate();
     
     const { user, profile, signOut } = useAuth();
 
@@ -21,7 +21,16 @@ const Navigation = () => {
         return "/";
     };
 
+    const getRoleDisplayName = () => {
+        if (profile?.role === 'admin') return 'Quản Trị Viên';
+        if (profile?.role === 'staff') return 'Nhân viên Y tế';
+        return 'Khách hàng';
+    };
+
     const homeLink = getHomeLink();
+
+    // Kiểm tra xem có phải là nhân sự nội bộ (Admin/Staff) không
+    const isInternalUser = profile?.role === 'staff' || profile?.role === 'admin';
 
     const links = [
         { name: "Trang Chủ", path: homeLink },
@@ -32,11 +41,10 @@ const Navigation = () => {
 
     const isActive = (path: string) => location.pathname === path;
 
-    // --- HÀM ĐĂNG XUẤT CHUẨN ---
     const handleLogout = async () => {
-        await signOut();      // 1. Đăng xuất khỏi hệ thống
-        navigate('/');        // 2. Chuyển ngay về trang chủ
-        setIsOpen(false);     // 3. Đóng menu mobile (nếu đang mở)
+        await signOut();
+        navigate('/');
+        setIsOpen(false);
     };
 
     return (
@@ -69,12 +77,6 @@ const Navigation = () => {
 
                         <ProjectInfoBtn />
 
-                        {profile?.role === 'staff' && (
-                            <Button asChild variant="ghost" className="text-blue-600 font-bold hover:text-blue-700 hover:bg-blue-50 px-2">
-                                <Link to="/test-video">📋 Báo cáo ca làm</Link>
-                            </Button>
-                        )}
-
                         {user ? (
                             <div className="flex items-center gap-3 pl-4 border-l border-gray-200">
                                 <Link to="/profile" className="text-right hidden lg:block cursor-pointer hover:opacity-70 transition-opacity">
@@ -82,14 +84,14 @@ const Navigation = () => {
                                         {profile?.full_name || 'Người dùng'}
                                     </p>
                                     <p className="text-[10px] text-gray-500 uppercase tracking-wider">
-                                        {profile?.role === 'staff' ? 'Nhân viên Y tế' : 'Khách hàng'}
+                                        {getRoleDisplayName()}
                                     </p>
                                 </Link>
                                 
                                 <Button 
                                     variant="ghost" 
                                     size="sm" 
-                                    onClick={handleLogout} // <-- Sử dụng hàm đăng xuất mới
+                                    onClick={handleLogout}
                                     className="text-red-500 hover:text-red-600 hover:bg-red-50"
                                 >
                                     Đăng xuất
@@ -101,9 +103,12 @@ const Navigation = () => {
                             </Button>
                         )}
 
-                        <Button asChild variant="default" size="sm">
-                            <Link to="/contact">Đặt Lịch Ngay</Link>
-                        </Button>
+                        {/* --- CHỈ HIỆN NÚT ĐẶT LỊCH NẾU KHÔNG PHẢI LÀ ADMIN HOẶC STAFF --- */}
+                        {!isInternalUser && (
+                            <Button asChild variant="default" size="sm">
+                                <Link to="/contact">Đặt Lịch Ngay</Link>
+                            </Button>
+                        )}
                     </div>
 
                     {/* Mobile Menu Button */}
@@ -130,7 +135,7 @@ const Navigation = () => {
                                 <div>
                                     <p className="font-bold text-sm text-gray-900">{profile?.full_name}</p>
                                     <p className="text-xs text-gray-500">
-                                        {profile?.role === 'staff' ? 'Nhân viên - Nhấn để xem hồ sơ' : 'Khách hàng - Nhấn để xem hồ sơ'}
+                                        {getRoleDisplayName()} - Nhấn để xem hồ sơ
                                     </p>
                                 </div>
                             </Link>
@@ -150,23 +155,13 @@ const Navigation = () => {
                             </Link>
                         ))}
 
-                        {profile?.role === 'staff' && (
-                            <Link
-                                to="/test-video"
-                                className="block px-4 py-2 rounded-lg text-blue-600 font-bold bg-blue-50 hover:bg-blue-100 mx-2"
-                                onClick={() => setIsOpen(false)}
-                            >
-                                📋 Báo cáo ca làm
-                            </Link>
-                        )}
-
                         <div className="px-4 py-2" onClick={() => setIsOpen(false)}>
                             <ProjectInfoBtn />
                         </div>
 
                         <div className="px-4 pt-2 space-y-2">
                             {user ? (
-                                <Button variant="outline" className="w-full text-red-500 border-red-200 hover:bg-red-50" onClick={handleLogout}> {/* <-- Sử dụng hàm đăng xuất mới */}
+                                <Button variant="outline" className="w-full text-red-500 border-red-200 hover:bg-red-50" onClick={handleLogout}>
                                     Đăng xuất
                                 </Button>
                             ) : (
@@ -177,11 +172,14 @@ const Navigation = () => {
                                 </Button>
                             )}
                             
-                            <Button asChild variant="default" className="w-full">
-                                <Link to="/contact" onClick={() => setIsOpen(false)}>
-                                    Đặt Lịch Ngay
-                                </Link>
-                            </Button>
+                            {/* --- MOBILE: CHỈ HIỆN NÚT ĐẶT LỊCH NẾU KHÔNG PHẢI ADMIN/STAFF --- */}
+                            {!isInternalUser && (
+                                <Button asChild variant="default" className="w-full">
+                                    <Link to="/contact" onClick={() => setIsOpen(false)}>
+                                        Đặt Lịch Ngay
+                                    </Link>
+                                </Button>
+                            )}
                         </div>
                     </div>
                 )}

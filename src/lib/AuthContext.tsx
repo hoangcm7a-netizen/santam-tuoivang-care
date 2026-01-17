@@ -9,6 +9,13 @@ type Profile = {
   role: 'staff' | 'customer' | 'admin';
   phone: string | null;
   specialties: string | null;
+  referral_code: string | null;
+  referred_by: string | null;
+  verification_status: 'unverified' | 'pending' | 'verified' | 'rejected' | null;
+  cccd_front_img: string | null;
+  cccd_back_img: string | null;
+  degree_img: string[] | null;
+  wallet_balance: number | null;
 };
 
 // Tạo Context

@@ -9,7 +9,6 @@ import Services from "./pages/Services";
 import About from "./pages/About";
 import Contact from "./pages/Contact";
 import NotFound from "./pages/NotFound";
-import TestVideo from "./pages/TestVideo";
 import { AuthProvider } from "@/lib/AuthContext";
 import AuthPage from "./pages/Auth";
 import Profile from "./pages/Profile";
@@ -37,7 +36,6 @@ const App = () => (
               <Route path="/contact" element={<Contact />} />
               <Route path="/auth" element={<AuthPage />} />
               <Route path="/profile" element={<Profile />} />
-              <Route path="/test-video" element={<TestVideo />} />
               <Route path="/email-confirmed" element={<EmailConfirmed />} />
               <Route path="/customer-dashboard" element={<CustomerDashboard />} />
               <Route path="/staff-dashboard" element={<StaffDashboard />} />
