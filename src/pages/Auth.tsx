@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -10,7 +10,10 @@ const AuthPage = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   
-  const [view, setView] = useState<'login' | 'register' | 'forgot'>('login');
+  // Khởi tạo view dựa trên URL hoặc mặc định là login
+  const initialView = searchParams.get('mode') === 'register' ? 'register' : 'login';
+  const [view, setView] = useState<'login' | 'register' | 'forgot'>(initialView);
+  
   const [loading, setLoading] = useState(false);
 
   // Form data
@@ -19,21 +22,25 @@ const AuthPage = () => {
   const [fullName, setFullName] = useState('');
   const [phone, setPhone] = useState('');
   const [role, setRole] = useState<'customer' | 'staff'>('customer');
-  
-  // inputCode dùng chung cho cả Mã Đăng Ký hoặc Mã Giới Thiệu
   const [inputCode, setInputCode] = useState(''); 
 
-  // Notification State
   const [notification, setNotification] = useState<{isOpen: boolean; title: string; message: string; type: 'success' | 'error' | 'warning'}>({ isOpen: false, title: '', message: '', type: 'success' });
   const showNotify = (title: string, message: string, type: 'success' | 'error' | 'warning') => setNotification({ isOpen: true, title, message, type });
   const closeNotify = () => setNotification(prev => ({ ...prev, isOpen: false }));
+
+  // --- THÊM ĐOẠN NÀY: Lắng nghe URL thay đổi ---
+  useEffect(() => {
+    const mode = searchParams.get('mode');
+    if (mode === 'login') setView('login');
+    else if (mode === 'register') setView('register');
+  }, [searchParams]);
+  // ---------------------------------------------
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
 
     try {
-      // --- ĐĂNG NHẬP ---
       if (view === 'login') {
         const { data: { user }, error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) {
@@ -48,7 +55,6 @@ const AuthPage = () => {
           else navigate('/customer-dashboard'); 
         }
 
-      // --- QUÊN MẬT KHẨU ---
       } else if (view === 'forgot') {
           if (!email || !phone) {
              showNotify("Thiếu thông tin", "Nhập Email & SĐT.", "error"); setLoading(false); return;
@@ -58,9 +64,8 @@ const AuthPage = () => {
           showNotify("Đã gửi link", "Kiểm tra email để đặt lại mật khẩu.", "success");
           setView('login');
 
-      // --- ĐĂNG KÝ (LOGIC MỚI CHO CẢ STAFF & CUSTOMER) ---
       } else {
-        // Validation cơ bản
+        // Register Logic
         if (role === 'staff' && !inputCode) {
             showNotify("Thiếu mã", "Nhân viên bắt buộc phải có Mã đăng ký.", "error");
             setLoading(false); return;
@@ -69,57 +74,34 @@ const AuthPage = () => {
         let finalReferralCode = inputCode ? inputCode.toUpperCase() : `CUS-${Math.floor(1000 + Math.random() * 9000)}`;
         let referrerId = null; 
 
-        // Kiểm tra mã giới thiệu (Nếu có nhập)
         if (inputCode) {
             const codeToCheck = inputCode.toUpperCase();
-            
-            // Tìm xem mã này có tồn tại không
-            const { data: existingUser } = await supabase
-                .from('profiles')
-                .select('id, referral_code')
-                .eq('referral_code', codeToCheck)
-                .single();
+            const { data: existingUser } = await supabase.from('profiles').select('id, referral_code').eq('referral_code', codeToCheck).single();
 
             if (existingUser) {
-                // --> MÃ ĐÃ TỒN TẠI: Nghĩa là người này được giới thiệu
                 referrerId = existingUser.id;
-                
-                // Tạo mã mới cho user này để tránh trùng
-                // VD: Mã gốc là HOANG -> Mã user này thành HOANG-1234 (để thể hiện là F1 của Hoàng)
-                // Hoặc random hẳn: CUS-5678
                 const prefix = role === 'staff' ? 'STAFF' : 'CUS';
                 finalReferralCode = `${prefix}-${Math.floor(1000 + Math.random() * 9000)}`;
             }
-            // --> MÃ CHƯA TỒN TẠI: User này lấy luôn mã đó làm mã của mình
         }
 
-        // Tạo tài khoản Auth
         const { data: { user }, error } = await supabase.auth.signUp({
           email, password, options: { emailRedirectTo: `${window.location.origin}/email-confirmed` }
         });
         if (error) throw error;
 
         if (user) {
-          // Lưu vào Profile
           const { error: profileError } = await supabase.from('profiles').insert([{
-              id: user.id,
-              full_name: fullName,
-              phone: phone,
-              role: role,
-              referral_code: finalReferralCode, 
-              referred_by: referrerId, 
+              id: user.id, full_name: fullName, phone: phone, role: role,
+              referral_code: finalReferralCode, referred_by: referrerId, 
               verification_status: role === 'staff' ? 'unverified' : 'verified'
           }]);
           
           if (profileError) throw profileError;
           
-          // Thông báo kết quả
           let msg = "Vui lòng kiểm tra Gmail để kích hoạt.";
-          if (referrerId) {
-              msg = `Đăng ký thành công! Bạn được giới thiệu bởi thành viên có mã ${inputCode}. (Đã ghi nhận ưu đãi)`;
-          } else if (role === 'customer' && !inputCode) {
-              msg = "Đăng ký thành công! Chào mừng bạn đến với An Tâm Tuổi Vàng.";
-          }
+          if (referrerId) msg = `Đăng ký thành công! Bạn được giới thiệu bởi mã ${inputCode}.`;
+          else if (role === 'customer' && !inputCode) msg = "Đăng ký thành công!";
           
           showNotify("Đăng ký thành công!", msg, "success");
           setView('login');
@@ -134,7 +116,6 @@ const AuthPage = () => {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4 py-10 relative">
-      {/* POPUP THÔNG BÁO */}
       {notification.isOpen && (
         <div className="fixed inset-0 z-[9999] flex items-center justify-center px-4">
             <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={closeNotify}></div>
@@ -149,7 +130,6 @@ const AuthPage = () => {
         </div>
       )}
 
-      {/* FORM CHÍNH */}
       <div className="max-w-md w-full bg-white rounded-xl shadow-lg p-8 animate-in fade-in zoom-in duration-300">
         <div className="text-center mb-6">
             <h2 className="text-2xl font-bold text-[#2c3e50]">
@@ -178,7 +158,6 @@ const AuthPage = () => {
                   <div onClick={() => setRole('staff')} className={`flex-1 p-3 border rounded-lg cursor-pointer flex flex-col items-center gap-2 transition-all ${role === 'staff' ? 'bg-blue-50 border-blue-500 text-blue-700 ring-1 ring-blue-500 shadow-sm' : 'bg-white hover:bg-gray-50'}`}><Stethoscope size={24} /><span className="text-sm font-bold">Nhân viên Y tế</span></div>
                 </div>
 
-                {/* Ô NHẬP MÃ - HIỆN CHO CẢ 2 NHƯNG KHÁC NHAU VỀ UI */}
                 <div className={`mt-3 p-3 rounded-md border animate-in slide-in-from-top-2 ${role === 'staff' ? 'bg-blue-100/50 border-blue-200' : 'bg-orange-100/50 border-orange-200'}`}>
                     <Label className={`flex items-center gap-1 font-bold mb-1 ${role === 'staff' ? 'text-blue-800' : 'text-orange-800'}`}>
                         {role === 'staff' ? <><QrCode size={16}/> Mã Đăng ký / Giới thiệu *</> : <><Gift size={16}/> Mã Giới thiệu (Nhận ưu đãi)</>}
@@ -191,9 +170,7 @@ const AuthPage = () => {
                         className="bg-white focus-visible:ring-offset-0"
                     />
                     <p className="text-[11px] text-gray-600 mt-1.5 leading-tight italic">
-                       {role === 'staff' 
-                         ? "ℹ️ Nhập mã của người giới thiệu hoặc mã đăng ký mới." 
-                         : "ℹ️ Nhập mã giới thiệu để nhận voucher giảm giá (Tùy chọn)."}
+                       {role === 'staff' ? "ℹ️ Nhập mã của người giới thiệu hoặc mã đăng ký mới." : "ℹ️ Nhập mã giới thiệu để nhận voucher giảm giá (Tùy chọn)."}
                     </p>
                 </div>
               </div>
@@ -216,7 +193,12 @@ const AuthPage = () => {
         </form>
         <p className="mt-6 text-center text-sm text-gray-600">
           {view === 'login' ? 'Chưa có tài khoản? ' : 'Đã có tài khoản? '}
-          <button onClick={() => setView(view === 'login' ? 'register' : 'login')} className="text-[#e67e22] font-bold hover:underline">
+          {/* Cập nhật cả nút chuyển đổi ở dưới để đồng bộ URL */}
+          <button onClick={() => {
+              const nextView = view === 'login' ? 'register' : 'login';
+              setView(nextView);
+              navigate(`?mode=${nextView}`); // Cập nhật URL khi bấm nút dưới này
+          }} className="text-[#e67e22] font-bold hover:underline">
             {view === 'login' ? 'Đăng ký ngay' : 'Đăng nhập'}
           </button>
         </p>

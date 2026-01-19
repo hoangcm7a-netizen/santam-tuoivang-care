@@ -76,7 +76,10 @@ const StaffDashboard = () => {
                 </Button>
             </div>
         </div>
-
+        <Link to="/staff-chat" className="fixed bottom-24 right-4 bg-blue-600 text-white p-4 rounded-full shadow-lg z-50 hover:bg-blue-700 flex items-center gap-2">
+            <MessageCircle size={24} />
+            <span className="hidden md:inline">Chat với Admin</span>
+        </Link>
         {/* DANH SÁCH VIỆC CẦN LÀM */}
         <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
             <Clock className="text-orange-500"/> Việc cần làm hôm nay

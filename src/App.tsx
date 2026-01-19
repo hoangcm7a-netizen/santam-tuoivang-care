@@ -18,6 +18,8 @@ import StaffDashboard from "./pages/StaffDashboard";
 import AdminDashboard from "./pages/AdminDashboard";
 import Messages from "./pages/Messages";
 import ChatRoom from "./pages/ChatRoom";
+import StaffChat from "./pages/StaffChat";
+import ScrollToTop from "@/components/ScrollToTop";
 
 const queryClient = new QueryClient();
 
@@ -28,6 +30,7 @@ const App = () => (
         <Toaster />
         <Sonner />
         <BrowserRouter>
+        <ScrollToTop />
           <Layout>
             <Routes>
               <Route path="/" element={<Home />} />
@@ -42,6 +45,7 @@ const App = () => (
               <Route path="/admin-dashboard" element={<AdminDashboard />} />
               <Route path="/messages" element={<Messages />} />
               <Route path="/chat/:id" element={<ChatRoom />} />
+              <Route path="/staff-chat" element={<StaffChat/>} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </Layout>

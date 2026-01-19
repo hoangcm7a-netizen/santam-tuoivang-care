@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { Heart, Phone, Mail, MapPin, User } from "lucide-react";
+import { Phone, Mail, MapPin, User } from "lucide-react"; // Đã bỏ 'Heart' vì thay bằng ảnh
 
 const Footer = () => {
   return (
@@ -9,9 +9,11 @@ const Footer = () => {
           {/* Brand */}
           <div className="space-y-4">
             <div className="flex items-center gap-2">
-              <div className="w-10 h-10 rounded-lg bg-accent flex items-center justify-center">
-                <Heart className="w-5 h-5 text-accent-foreground" />
-              </div>
+              <img 
+                src="/LOGO.png" 
+                alt="Logo An Tâm Tuổi Vàng" 
+                className="w-12 h-12 object-contain bg-white rounded-lg p-1" 
+              />
               <div className="font-bold text-lg">An Tâm Tuổi Vàng</div>
             </div>
             <p className="text-sm text-primary-foreground/80">
@@ -57,7 +59,7 @@ const Footer = () => {
             </ul>
           </div>
 
-          {/* Contact Info - CHỈNH SỬA PHẦN NÀY */}
+          {/* Contact Info */}
           <div>
             <h3 className="font-semibold mb-4 text-lg">Đội Ngũ Phát Triển</h3>
             <div className="flex flex-col gap-6">
@@ -79,6 +81,8 @@ const Footer = () => {
                   </li>
                 </ul>
               </div>
+
+              {/* Người thứ 2 */}
               <div className="space-y-2">
                 <div className="flex items-center gap-2 font-bold text-accent">
                     <User className="w-4 h-4" />
@@ -95,6 +99,8 @@ const Footer = () => {
                   </li>
                 </ul>
               </div>
+
+              {/* Địa chỉ chung */}
               <div className="pt-2 border-t border-primary-foreground/10">
                  <div className="flex items-start gap-2 text-sm">
                     <MapPin className="w-4 h-4 mt-0.5 flex-shrink-0 text-accent" />
@@ -105,6 +111,8 @@ const Footer = () => {
             </div>
           </div>
         </div>
+
+        {/* Copyright */}
         <div className="border-t border-primary-foreground/20 mt-8 pt-8 text-center text-sm text-primary-foreground/60">
           <p>
             &copy; 2025 An Tâm Tuổi Vàng.

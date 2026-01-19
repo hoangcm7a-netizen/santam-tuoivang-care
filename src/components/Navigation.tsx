@@ -99,7 +99,7 @@ const Navigation = () => {
                             </div>
                         ) : (
                             <Button asChild variant="outline" size="sm" className="ml-2">
-                                <Link to="/auth">Đăng Nhập</Link>
+                                <Link to="/auth?mode=login">Đăng Nhập</Link>
                             </Button>
                         )}
 
@@ -166,7 +166,7 @@ const Navigation = () => {
                                 </Button>
                             ) : (
                                 <Button asChild variant="outline" className="w-full">
-                                    <Link to="/auth" onClick={() => setIsOpen(false)}>
+                                    <Link to="/auth?mode=login" onClick={() => setIsOpen(false)}>
                                         Đăng Nhập Tài Khoản
                                     </Link>
                                 </Button>
