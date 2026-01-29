@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { supabase } from "@/lib/supabase";
 import { AttendanceModal } from "@/components/AttendanceModal";
 import { VideoUploadModal } from "@/components/VideoUploadModal";
+import StaffJobMarket from "@/components/StaffJobMarket";
 
 const StaffDashboard = () => {
   const { user, profile } = useAuth();
@@ -80,6 +81,7 @@ const StaffDashboard = () => {
             <MessageCircle size={24} />
             <span className="hidden md:inline">Chat với Admin</span>
         </Link>
+        <StaffJobMarket />
         {/* DANH SÁCH VIỆC CẦN LÀM */}
         <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
             <Clock className="text-orange-500"/> Việc cần làm hôm nay

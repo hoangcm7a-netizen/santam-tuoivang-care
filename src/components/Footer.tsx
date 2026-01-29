@@ -1,12 +1,11 @@
 import { Link } from "react-router-dom";
-import { Phone, Mail, MapPin, User } from "lucide-react"; // Đã bỏ 'Heart' vì thay bằng ảnh
+import { Phone, Mail, MapPin, User } from "lucide-react";
 
 const Footer = () => {
   return (
     <footer className="bg-primary text-primary-foreground">
       <div className="container mx-auto px-4 py-12">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
-          {/* Brand */}
           <div className="space-y-4">
             <div className="flex items-center gap-2">
               <img 
@@ -20,8 +19,6 @@ const Footer = () => {
               Chăm sóc Y tế Chuyên biệt Tại Nhà – An Tâm Trọn Vẹn
             </p>
           </div>
-
-          {/* Quick Links */}
           <div>
             <h3 className="font-semibold mb-4 text-lg">Liên Kết Nhanh</h3>
             <ul className="space-y-2 text-sm">
@@ -47,8 +44,6 @@ const Footer = () => {
               </li>
             </ul>
           </div>
-
-          {/* Services */}
           <div>
             <h3 className="font-semibold mb-4 text-lg">Dịch Vụ</h3>
             <ul className="space-y-2 text-sm text-primary-foreground/80">
@@ -58,13 +53,9 @@ const Footer = () => {
               <li>Chăm Sóc Chuyên Biệt</li>
             </ul>
           </div>
-
-          {/* Contact Info */}
           <div>
             <h3 className="font-semibold mb-4 text-lg">Đội Ngũ Phát Triển</h3>
             <div className="flex flex-col gap-6">
-              
-              {/* Người thứ 1 */}
               <div className="space-y-2">
                 <div className="flex items-center gap-2 font-bold text-accent">
                     <User className="w-4 h-4" />
@@ -81,8 +72,6 @@ const Footer = () => {
                   </li>
                 </ul>
               </div>
-
-              {/* Người thứ 2 */}
               <div className="space-y-2">
                 <div className="flex items-center gap-2 font-bold text-accent">
                     <User className="w-4 h-4" />
@@ -99,20 +88,15 @@ const Footer = () => {
                   </li>
                 </ul>
               </div>
-
-              {/* Địa chỉ chung */}
               <div className="pt-2 border-t border-primary-foreground/10">
                  <div className="flex items-start gap-2 text-sm">
                     <MapPin className="w-4 h-4 mt-0.5 flex-shrink-0 text-accent" />
                     <span className="text-primary-foreground/80">Thanh Hóa, Việt Nam</span>
                  </div>
               </div>
-
             </div>
           </div>
         </div>
-
-        {/* Copyright */}
         <div className="border-t border-primary-foreground/20 mt-8 pt-8 text-center text-sm text-primary-foreground/60">
           <p>
             &copy; 2025 An Tâm Tuổi Vàng.

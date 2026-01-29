@@ -2,7 +2,7 @@ import { useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"; // Đảm bảo bạn có UI Dialog hoặc dùng div fixed
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Camera, Loader2, X } from "lucide-react";
 import { toast } from "sonner";
 
@@ -23,21 +23,15 @@ export const AttendanceModal = ({ isOpen, onClose, contactId, type, onSuccess }:
 
     try {
       setLoading(true);
-      
-      // 1. Upload ảnh lên Storage 'attendance'
       const fileName = `${contactId}_${type}_${Date.now()}.jpg`;
       const { error: uploadError } = await supabase.storage
         .from('attendance')
         .upload(fileName, file);
 
       if (uploadError) throw uploadError;
-
-      // 2. Lấy link ảnh
       const { data: { publicUrl } } = supabase.storage
         .from('attendance')
         .getPublicUrl(fileName);
-
-      // 3. Cập nhật vào Database
       const updateData = type === 'check-in' 
         ? { check_in_time: new Date().toISOString(), check_in_img: publicUrl }
         : { check_out_time: new Date().toISOString(), check_out_img: publicUrl };
@@ -77,7 +71,7 @@ export const AttendanceModal = ({ isOpen, onClose, contactId, type, onSuccess }:
             <Input 
               type="file" 
               accept="image/*" 
-              capture="environment" // Mở camera trên điện thoại
+              capture="environment"
               onChange={(e) => setFile(e.target.files ? e.target.files[0] : null)}
               className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
             />

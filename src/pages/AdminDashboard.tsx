@@ -4,7 +4,7 @@ import { supabase } from "@/lib/supabase";
 import { 
     Users, FileText, DollarSign, Trash2, CheckCircle, Pencil, X, 
     AlertTriangle, Send, UserCheck, MessageSquareReply, Clock, Video, 
-    Eye, Award, Gift, Wallet, Plus, MapPin, Search, Ban, QrCode, ArrowDownCircle, History, FileBadge, MessageSquare, MessageCircle 
+    Eye, Award, Gift, Wallet, Plus, MapPin, Search, Ban, QrCode, ArrowDownCircle, History, FileBadge, MessageSquare, MessageCircle, Lock 
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -38,9 +38,7 @@ const AdminDashboard = () => {
   const [editingService, setEditingService] = useState<any>(null);
   const [addServiceModal, setAddServiceModal] = useState(false);
   const [newService, setNewService] = useState({ name: '', price: '', description: '', requirements: '' });
-  
   const [previewImage, setPreviewImage] = useState<string | null>(null);
-  const [forwardModal, setForwardModal] = useState<{ isOpen: boolean, contact: any } | null>(null);
   const [replyModal, setReplyModal] = useState<{ isOpen: boolean, contact: any } | null>(null);
   const [replyText, setReplyText] = useState("");
   const [inspectModal, setInspectModal] = useState<any>(null); 
@@ -50,12 +48,18 @@ const AdminDashboard = () => {
   const [bonusAmount, setBonusAmount] = useState("");
   const [bonusReason, setBonusReason] = useState("");
   const [rejectConfirm, setRejectConfirm] = useState<{ isOpen: boolean, id: string, name: string } | null>(null);
-  
   const [depositModal, setDepositModal] = useState(false);
   const [depositAmount, setDepositAmount] = useState("");
-
   const [rejectReasonModal, setRejectReasonModal] = useState<{isOpen: boolean, reqId: string, staffId: string} | null>(null);
   const [rejectReason, setRejectReason] = useState("");
+
+  // --- STATE CHUYỂN ĐƠN BẢO MẬT (NEW) ---
+  const [forwardModal, setForwardModal] = useState<{ isOpen: boolean, contact: any } | null>(null);
+  const [transferStep, setTransferStep] = useState<'select' | 'otp'>('select'); // Bước 1: Chọn NV, Bước 2: Nhập OTP
+  const [selectedStaffId, setSelectedStaffId] = useState("");
+  const [transferReason, setTransferReason] = useState("");
+  const [otpInput, setOtpInput] = useState("");
+  const [generatedOtp, setGeneratedOtp] = useState(""); // Trong thực tế OTP lưu ở DB, đây là biến tạm để demo
 
   useEffect(() => {
     fetchData();
@@ -64,7 +68,8 @@ const AdminDashboard = () => {
     if (activeTab === 'chat') fetchChatUsers(); 
   }, [activeTab, user]);
 
-  // Realtime cho Chat (Bỏ tự động cuộn khi nhận tin để tránh giật trang)
+  // ... (Giữ nguyên các useEffect Chat Realtime và hàm fetchData cũ) ...
+  // Realtime cho Chat
   useEffect(() => {
       if (activeTab === 'chat' && selectedChatUser) {
           const channel = supabase
@@ -83,97 +88,94 @@ const AdminDashboard = () => {
   }, [selectedChatUser, activeTab]);
 
   const fetchData = async () => {
-    if (activeTab === 'users') {
-        const { data } = await supabase.from('profiles').select('*').order('created_at', { ascending: false });
-        if (data) setUsers(data);
+    if (activeTab === 'users') { const { data } = await supabase.from('profiles').select('*').order('created_at', { ascending: false }); if (data) setUsers(data); }
+    if (activeTab === 'contacts') { const { data } = await supabase.from('contacts').select('*, assigned_staff:profiles(full_name)').order('created_at', { ascending: false }); if (data) setContacts(data); }
+    if (activeTab === 'services') { 
+        const { data: svcs } = await supabase.from('services').select('*').order('created_at', { ascending: false }); if (svcs) setServices(svcs);
+        const { data: reqs } = await supabase.from('staff_services').select('*, staff:profiles(full_name, id), service:services(name)').order('created_at', { ascending: false }); if (reqs) setServiceRequests(reqs);
     }
-    if (activeTab === 'contacts') {
-        const { data } = await supabase.from('contacts').select('*, assigned_staff:profiles(full_name)').order('created_at', { ascending: false });
-        if (data) setContacts(data);
-    }
-    if (activeTab === 'services') {
-        const { data: svcs } = await supabase.from('services').select('*').order('created_at', { ascending: false });
-        if (svcs) setServices(svcs);
-        const { data: reqs } = await supabase
-          .from('staff_services')
-          .select('*, staff:profiles(full_name, id), service:services(name)')
-          .order('created_at', { ascending: false });
-        if (reqs) setServiceRequests(reqs);
-    }
-    if (activeTab === 'transactions') {
-        const { data } = await supabase
-            .from('transactions')
-            .select('*, receiver:profiles!user_id(full_name), sender:profiles!sender_id(full_name)')
-            .order('created_at', { ascending: false });
-        if (data) setTransactions(data);
-    }
+    if (activeTab === 'transactions') { const { data } = await supabase.from('transactions').select('*, receiver:profiles!user_id(full_name), sender:profiles!sender_id(full_name)').order('created_at', { ascending: false }); if (data) setTransactions(data); }
   };
 
-  const fetchStaff = async () => {
-      const { data } = await supabase.from('profiles').select('*').eq('role', 'staff');
-      if (data) setStaffList(data);
-  };
+  const fetchStaff = async () => { const { data } = await supabase.from('profiles').select('*').eq('role', 'staff'); if (data) setStaffList(data); };
+  const fetchAdminBalance = async () => { if (!user) return; const { data } = await supabase.from('profiles').select('wallet_balance').eq('id', user.id).single(); if (data) setAdminBalance(data.wallet_balance || 0); };
+  const fetchChatUsers = async () => { const { data } = await supabase.from('chat_messages').select('sender_id, receiver_id, created_at, content').eq('is_staff_reply', true).order('created_at', { ascending: false }); if (data) { const userIds = new Set(); data.forEach(msg => { if (msg.sender_id && msg.sender_id !== user?.id) userIds.add(msg.sender_id); if (msg.receiver_id && msg.receiver_id !== user?.id) userIds.add(msg.receiver_id); }); if (userIds.size > 0) { const { data: profiles } = await supabase.from('profiles').select('*').in('id', Array.from(userIds)); setChatUsers(profiles || []); } } };
+  const selectChatUser = async (staffUser: any) => { setSelectedChatUser(staffUser); const { data } = await supabase.from('chat_messages').select('*').or(`sender_id.eq.${staffUser.id},receiver_id.eq.${staffUser.id}`).order('created_at', { ascending: true }); setAdminChatMessages(data || []); };
+  const handleAdminSendChat = async () => { if (!adminChatInput.trim() || !selectedChatUser) return; try { const { data, error } = await supabase.from('chat_messages').insert({ sender_id: user?.id, receiver_id: selectedChatUser.id, content: adminChatInput, is_staff_reply: true }).select(); if (error) throw error; if (data) setAdminChatMessages(prev => [...prev, data[0]]); setAdminChatInput(""); setTimeout(() => chatEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 100); } catch (err: any) { toast.error("Lỗi gửi tin: " + err.message); } };
 
-  const fetchAdminBalance = async () => {
-      if (!user) return;
-      const { data } = await supabase.from('profiles').select('wallet_balance').eq('id', user.id).single();
-      if (data) setAdminBalance(data.wallet_balance || 0);
-  };
-
-  // --- LOGIC CHAT ADMIN ---
-  const fetchChatUsers = async () => {
-      const { data } = await supabase.from('chat_messages')
-        .select('sender_id, receiver_id, created_at, content')
-        .eq('is_staff_reply', true)
-        .order('created_at', { ascending: false });
-
-      if (data) {
-          const userIds = new Set();
-          data.forEach(msg => {
-              if (msg.sender_id && msg.sender_id !== user?.id) userIds.add(msg.sender_id);
-              if (msg.receiver_id && msg.receiver_id !== user?.id) userIds.add(msg.receiver_id);
+  // --- LOGIC CHUYỂN ĐƠN BẢO MẬT (OTP) ---
+  const initiateTransfer = async (staffId: string) => {
+      if (!transferReason) return toast.error("Vui lòng nhập lý do chuyển đơn!");
+      setSelectedStaffId(staffId);
+      
+      // 1. Tạo mã OTP ngẫu nhiên 6 số
+      const code = Math.floor(100000 + Math.random() * 900000).toString();
+      
+      // 2. Lưu vào DB (Giả lập gửi email)
+      try {
+          const { error } = await supabase.from('admin_otps').insert({
+              admin_id: user?.id,
+              code: code,
+              expired_at: new Date(Date.now() + 5 * 60000).toISOString(), // Hết hạn sau 5p
+              is_used: false
           });
+          if(error) throw error;
 
-          if (userIds.size > 0) {
-              const { data: profiles } = await supabase.from('profiles').select('*').in('id', Array.from(userIds));
-              setChatUsers(profiles || []);
-          }
+          // 3. Giả lập gửi email (Ở môi trường thật sẽ gọi Edge Function gửi mail)
+          toast.info(`Mã xác thực đã gửi đến Email của bạn: ${code}`, { duration: 10000 });
+          setGeneratedOtp(code); // Lưu tạm để đối chiếu (Demo)
+          
+          setTransferStep('otp'); // Chuyển sang bước nhập OTP
+      } catch (err:any) {
+          toast.error("Lỗi tạo OTP: " + err.message);
       }
   };
 
-  const selectChatUser = async (staffUser: any) => {
-      setSelectedChatUser(staffUser);
-      const { data } = await supabase.from('chat_messages')
-          .select('*')
-          .or(`sender_id.eq.${staffUser.id},receiver_id.eq.${staffUser.id}`)
-          .order('created_at', { ascending: true });
+  const confirmTransfer = async () => {
+      if (!forwardModal || !selectedStaffId) return;
       
-      setAdminChatMessages(data || []);
-      // setTimeout(() => chatEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100); // BỎ DÒNG NÀY ĐỂ KHÔNG TỰ CUỘN
-  };
+      // 1. Kiểm tra OTP
+      // (Trong thực tế: Query DB check code where admin_id = user.id AND is_used = false AND expired_at > now)
+      if (otpInput !== generatedOtp) {
+          return toast.error("Mã xác thực không đúng hoặc đã hết hạn!");
+      }
 
-  const handleAdminSendChat = async () => {
-      if (!adminChatInput.trim() || !selectedChatUser) return;
       try {
-          const { data, error } = await supabase.from('chat_messages').insert({
-              sender_id: user?.id,
-              receiver_id: selectedChatUser.id,
-              content: adminChatInput,
-              is_staff_reply: true 
-          }).select();
+          // 2. Thực hiện chuyển đơn
+          const { error } = await supabase.from('contacts')
+              .update({ 
+                  assigned_staff_id: selectedStaffId, 
+                  status: 'processing', // Chuyển trạng thái
+                  admin_note: `Admin chuyển đơn. Lý do: ${transferReason}` // Lưu lý do vào note (nếu có cột này) hoặc log riêng
+              })
+              .eq('id', forwardModal.contact.id);
 
           if (error) throw error;
-          
-          if (data) setAdminChatMessages(prev => [...prev, data[0]]);
-          
-          setAdminChatInput("");
-          // CHỈ CUỘN KHI GỬI TIN NHẮN
-          setTimeout(() => chatEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 100);
-      } catch (err: any) { toast.error("Lỗi gửi tin: " + err.message); }
+
+          // 3. Đánh dấu OTP đã dùng
+          await supabase.from('admin_otps').update({ is_used: true }).eq('code', otpInput);
+
+          // 4. Gửi thông báo cho nhân viên mới
+          await supabase.from('chat_messages').insert({
+              sender_id: user?.id,
+              receiver_id: selectedStaffId,
+              is_staff_reply: false,
+              content: `🔔 Bạn vừa được Admin chỉ định nhận đơn hàng "${forwardModal.contact.name}". Lý do: ${transferReason}. Vui lòng kiểm tra!`
+          });
+
+          toast.success("Chuyển đơn thành công!");
+          setForwardModal(null);
+          setTransferStep('select');
+          setTransferReason("");
+          setOtpInput("");
+          fetchData();
+      } catch (err: any) {
+          toast.error(err.message);
+      }
   };
 
-  // --- CÁC LOGIC KHÁC GIỮ NGUYÊN (Copy lại từ code cũ) ---
-  const handleApproveRequest = async (req: any) => { try { const { error } = await supabase.from('staff_services').update({ status: 'approved', admin_note: 'Đã được duyệt bởi Admin' }).eq('id', req.id); if (error) throw error; await supabase.from('chat_messages').insert({ sender_id: user?.id, receiver_id: req.staff_id, is_staff_reply: false, content: `✅ Chúc mừng! Yêu cầu mở dịch vụ "${req.service.name}" của bạn đã được DUYỆT.` }); toast.success("Đã duyệt!"); fetchData(); } catch (err: any) { toast.error(err.message); } };
+  // --- CÁC LOGIC KHÁC GIỮ NGUYÊN ---
+  const handleApproveRequest = async (req: any) => { try { const { error } = await supabase.from('staff_services').update({ status: 'approved', admin_note: 'Đã được duyệt bởi Admin' }).eq('id', req.id); if (error) throw error; const serviceName = Array.isArray(req.service) ? req.service[0]?.name : req.service?.name; await supabase.from('chat_messages').insert({ sender_id: user?.id, receiver_id: req.staff_id, is_staff_reply: false, content: `✅ Chúc mừng! Yêu cầu mở dịch vụ "${serviceName || 'này'}" của bạn đã được DUYỆT.` }); toast.success("Đã duyệt!"); fetchData(); } catch (err: any) { toast.error(err.message); } };
   const handleRejectRequest = async () => { if (!rejectReasonModal) return; try { const { error } = await supabase.from('staff_services').update({ status: 'rejected', admin_note: rejectReason }).eq('id', rejectReasonModal.reqId); if (error) throw error; await supabase.from('chat_messages').insert({ sender_id: user?.id, receiver_id: rejectReasonModal.staffId, is_staff_reply: false, content: `❌ Yêu cầu mở dịch vụ bị TỪ CHỐI. Lý do: ${rejectReason}.` }); toast.error("Đã từ chối."); setRejectReasonModal(null); setRejectReason(""); fetchData(); } catch (err: any) { toast.error(err.message); } };
   const handleDeposit = async () => { const amount = parseInt(depositAmount.replace(/\D/g, '')); if (!amount || amount <= 0) return toast.error("Số tiền không hợp lệ"); try { const { error: updateErr } = await supabase.from('profiles').update({ wallet_balance: adminBalance + amount }).eq('id', user?.id); if (updateErr) throw updateErr; await supabase.from('transactions').insert([{ user_id: user?.id, sender_id: user?.id, amount: amount, type: 'deposit', description: 'Nạp tiền vào quỹ thưởng' }]); toast.success(`Đã nạp thành công ${amount.toLocaleString()} đ`); setDepositModal(false); setDepositAmount(""); await fetchAdminBalance(); await fetchData(); } catch (err: any) { toast.error("Lỗi nạp tiền: " + err.message); } };
   const handleGiveBonus = async () => { if (!bonusModal || !bonusAmount) return; const amount = parseInt(bonusAmount.replace(/\D/g, '')); if (amount <= 0 || amount > adminBalance) return toast.error("Số dư không đủ."); try { await supabase.from('profiles').update({ wallet_balance: adminBalance - amount }).eq('id', user?.id); await supabase.from('profiles').update({ wallet_balance: (bonusModal.wallet_balance || 0) + amount }).eq('id', bonusModal.id); await supabase.from('transactions').insert([{ user_id: bonusModal.id, sender_id: user?.id, amount: amount, type: 'bonus', description: bonusReason || 'Thưởng nóng từ Admin' }]); toast.success("Đã gửi thưởng thành công!"); setBonusModal(null); setBonusAmount(""); setBonusReason(""); await fetchData(); await fetchAdminBalance(); } catch (err: any) { toast.error("Lỗi: " + err.message); } };
@@ -185,7 +187,6 @@ const AdminDashboard = () => {
   const executeRejectStaff = async () => { if (!rejectConfirm) return; try { await supabase.from('profiles').update({ verification_status: 'rejected' }).eq('id', rejectConfirm.id); toast.error("Đã từ chối HS"); setRejectConfirm(null); setVerifyModal(null); fetchData(); } catch (err: any) { toast.error(err.message); } };
   const handleUpdateUser = async () => { if (!editingUser) return; const { error } = await supabase.from('profiles').update({ full_name: editingUser.full_name, phone: editingUser.phone, role: editingUser.role }).eq('id', editingUser.id); if (error) toast.error(error.message); else { toast.success("Đã cập nhật"); setEditingUser(null); fetchData(); } };
   const getRecommendedStaff = (message: string) => { if (!message || staffList.length === 0) return staffList; const lower = message.toLowerCase(); return [...staffList].sort((a, b) => { const aM = a.specialties && lower.includes(a.specialties.toLowerCase()) ? 1 : 0; const bM = b.specialties && lower.includes(b.specialties.toLowerCase()) ? 1 : 0; return bM - aM; }); };
-  const handleAssignStaff = async (staffId: string) => { if (!forwardModal) return; const { error } = await supabase.from('contacts').update({ assigned_staff_id: staffId, status: 'read' }).eq('id', forwardModal.contact.id); if (error) toast.error(error.message); else { toast.success("Đã chuyển đơn!"); setForwardModal(null); fetchData(); } };
   const handleReply = async () => { if (!replyModal || !replyText) return; try { await supabase.from('chat_messages').insert([{ contact_id: replyModal.contact.id, sender_id: user?.id, content: replyText, is_staff_reply: true }]); await supabase.from('contacts').update({ admin_reply: replyText, status: 'done' }).eq('id', replyModal.contact.id); toast.success("Đã gửi phản hồi!"); setReplyModal(null); setReplyText(""); fetchData(); } catch (err: any) { toast.error(err.message); } };
   const handleInspect = async (contact: any) => { setInspectModal(contact); const { data } = await supabase.from('care_logs').select('*').eq('contact_id', contact.id); setJobLogs(data || []); };
 
@@ -214,175 +215,74 @@ const AdminDashboard = () => {
 
         <div className="bg-white rounded-xl shadow-sm border p-4 min-h-[400px]">
             {/* 1. TAB USERS */}
-            {activeTab === 'users' && (
-                <div className="overflow-x-auto">
-                    <table className="w-full text-left border-collapse">
-                        <thead className="bg-gray-50 text-gray-600 text-sm"><tr><th className="p-3">Họ Tên</th><th className="p-3">Vai trò</th><th className="p-3">Trạng thái</th><th className="p-3">Ví tiền</th><th className="p-3 text-right">Hành động</th></tr></thead>
-                        <tbody>
-                            {users.map(u => (
-                                <tr key={u.id} className="border-t hover:bg-gray-50">
-                                    <td className="p-3 font-medium">{u.full_name} {u.referred_by && <span className="block text-[10px] text-green-600 font-bold">GT bởi: {u.referred_by.slice(0,6)}...</span>}</td>
-                                    <td className="p-3"><span className={`px-2 py-1 rounded text-xs font-bold ${u.role === 'admin' ? 'bg-purple-100 text-purple-700' : u.role === 'staff' ? 'bg-blue-100 text-blue-700' : 'bg-orange-100 text-orange-700'}`}>{u.role.toUpperCase()}</span></td>
-                                    <td className="p-3">{u.verification_status === 'verified' ? <span className="text-green-600 text-xs font-bold flex items-center gap-1"><CheckCircle size={12}/> Đã duyệt</span> : u.verification_status === 'rejected' ? <span className="text-red-600 text-xs font-bold flex items-center gap-1"><Ban size={12}/> Bị từ chối</span> : u.verification_status === 'pending' ? <span className="text-yellow-600 text-xs font-bold bg-yellow-100 px-2 py-1 rounded animate-pulse cursor-pointer" onClick={() => setVerifyModal(u)}>Chờ duyệt</span> : <span className="text-gray-400 text-xs">Chưa nộp HS</span>}</td>
-                                    <td className="p-3 font-mono text-green-700 font-bold">{(u.wallet_balance || 0).toLocaleString()} đ</td>
-                                    <td className="p-3 text-right flex justify-end gap-2">{u.role === 'staff' && (<>{u.verification_status === 'pending' && <Button size="sm" className="bg-green-600 h-8 px-2 text-xs" onClick={() => setVerifyModal(u)}>Duyệt HS</Button>}<Button size="sm" variant="outline" className="border-yellow-400 text-yellow-600 h-8 px-2" onClick={() => setBonusModal(u)}><Gift size={16}/></Button></>)}<Button size="sm" variant="ghost" onClick={() => setEditingUser(u)} className="h-8 w-8 p-0"><Pencil size={16}/></Button><Button size="sm" variant="ghost" className="text-red-500 h-8 w-8 p-0" onClick={() => handleDeleteClick(u, 'user')}><Trash2 size={16}/></Button></td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                </div>
-            )}
+            {activeTab === 'users' && ( <div className="overflow-x-auto"> <table className="w-full text-left border-collapse"> <thead className="bg-gray-50 text-gray-600 text-sm"><tr><th className="p-3">Họ Tên</th><th className="p-3">Vai trò</th><th className="p-3">Trạng thái</th><th className="p-3">Ví tiền</th><th className="p-3 text-right">Hành động</th></tr></thead> <tbody> {users.map(u => ( <tr key={u.id} className="border-t hover:bg-gray-50"> <td className="p-3 font-medium">{u.full_name} {u.referred_by && <span className="block text-[10px] text-green-600 font-bold">GT bởi: {u.referred_by.slice(0,6)}...</span>}</td> <td className="p-3"><span className={`px-2 py-1 rounded text-xs font-bold ${u.role === 'admin' ? 'bg-purple-100 text-purple-700' : u.role === 'staff' ? 'bg-blue-100 text-blue-700' : 'bg-orange-100 text-orange-700'}`}>{u.role.toUpperCase()}</span></td> <td className="p-3">{u.verification_status === 'verified' ? <span className="text-green-600 text-xs font-bold flex items-center gap-1"><CheckCircle size={12}/> Đã duyệt</span> : u.verification_status === 'rejected' ? <span className="text-red-600 text-xs font-bold flex items-center gap-1"><Ban size={12}/> Bị từ chối</span> : u.verification_status === 'pending' ? <span className="text-yellow-600 text-xs font-bold bg-yellow-100 px-2 py-1 rounded animate-pulse cursor-pointer" onClick={() => setVerifyModal(u)}>Chờ duyệt</span> : <span className="text-gray-400 text-xs">Chưa nộp HS</span>}</td> <td className="p-3 font-mono text-green-700 font-bold">{(u.wallet_balance || 0).toLocaleString()} đ</td> <td className="p-3 text-right flex justify-end gap-2">{u.role === 'staff' && (<>{u.verification_status === 'pending' && <Button size="sm" className="bg-green-600 h-8 px-2 text-xs" onClick={() => setVerifyModal(u)}>Duyệt HS</Button>}<Button size="sm" variant="outline" className="border-yellow-400 text-yellow-600 h-8 px-2" onClick={() => setBonusModal(u)}><Gift size={16}/></Button></>)}<Button size="sm" variant="ghost" onClick={() => setEditingUser(u)} className="h-8 w-8 p-0"><Pencil size={16}/></Button><Button size="sm" variant="ghost" className="text-red-500 h-8 w-8 p-0" onClick={() => handleDeleteClick(u, 'user')}><Trash2 size={16}/></Button></td> </tr> ))} </tbody> </table> </div> )}
 
             {/* 2. TAB CONTACTS */}
-            {activeTab === 'contacts' && (
-                <div className="space-y-4">
-                    {contacts.length === 0 && <p className="text-center text-gray-400 py-10">Chưa có đơn nào.</p>}
-                    {contacts.map(c => (
-                        <div key={c.id} className={`p-4 rounded-lg border flex flex-col lg:flex-row justify-between gap-4 ${c.status==='new' ? 'bg-orange-50 border-orange-200' : 'bg-white'}`}>
-                            <div className="flex-1">
-                                <h3 className="font-bold text-gray-800 flex items-center gap-2">{c.name} {c.status === 'new' && <span className="bg-red-500 text-white text-[10px] px-2 py-0.5 rounded-full animate-pulse">MỚI</span>}</h3>
-                                <p className="text-sm text-gray-600 flex items-center gap-2"><MapPin size={14}/> {c.address || "Chưa có địa chỉ"} | 📞 {c.phone}</p>
-                                <p className="mt-2 text-gray-800 bg-gray-50 p-2 rounded italic border">"{c.message}"</p>
-                                <div className="mt-2 flex gap-3 text-xs">
-                                    {c.assigned_staff && <span className="text-blue-600 font-bold flex items-center gap-1"><UserCheck size={14}/> NV: {c.assigned_staff.full_name}</span>}
-                                    {c.check_in_time && <span className="text-green-600 font-bold flex items-center gap-1"><Clock size={14}/> Đã Check-in</span>}
-                                    {c.admin_reply && <span className="text-purple-600 font-bold flex items-center gap-1"><MessageSquareReply size={14}/> Đã trả lời</span>}
-                                </div>
-                            </div>
-                            <div className="flex flex-col gap-2 min-w-[140px]">
-                                <Button size="sm" variant="secondary" className="w-full border" onClick={() => handleInspect(c)}><CheckCircle size={14} className="mr-2"/> Kiểm tra</Button>
-                                <Button size="sm" className="bg-blue-600 hover:bg-blue-700 w-full" onClick={() => setForwardModal({isOpen: true, contact: c})}><Send size={14} className="mr-2"/> Chuyển NV</Button>
-                                <Button size="sm" variant="outline" className="text-green-600 border-green-200 hover:bg-green-50 w-full" onClick={() => setReplyModal({isOpen: true, contact: c})}><MessageSquareReply size={14} className="mr-2"/> Phản hồi</Button>
-                                <Button size="sm" variant="ghost" className="text-red-400 hover:text-red-600 w-full" onClick={() => handleDeleteClick(c, 'contact')}><Trash2 size={14} className="mr-2"/> Xóa</Button>
-                            </div>
-                        </div>
-                    ))}
-                </div>
-            )}
+            {activeTab === 'contacts' && ( <div className="space-y-4"> {contacts.length === 0 && <p className="text-center text-gray-400 py-10">Chưa có đơn nào.</p>} {contacts.map(c => ( <div key={c.id} className={`p-4 rounded-lg border flex flex-col lg:flex-row justify-between gap-4 ${c.status==='new' ? 'bg-orange-50 border-orange-200' : 'bg-white'}`}> <div className="flex-1"> <h3 className="font-bold text-gray-800 flex items-center gap-2">{c.name} {c.status === 'new' && <span className="bg-red-500 text-white text-[10px] px-2 py-0.5 rounded-full animate-pulse">MỚI</span>}</h3> <p className="text-sm text-gray-600 flex items-center gap-2"><MapPin size={14}/> {c.address || "Chưa có địa chỉ"} | 📞 {c.phone}</p> <p className="mt-2 text-gray-800 bg-gray-50 p-2 rounded italic border">"{c.message}"</p> <div className="mt-2 flex gap-3 text-xs"> {c.assigned_staff ? <span className="text-blue-600 font-bold flex items-center gap-1"><UserCheck size={14}/> NV: {c.assigned_staff.full_name}</span> : <span className="text-orange-500 font-bold flex items-center gap-1">⚠ Chưa có người nhận (Đang treo trên sàn)</span>} {c.check_in_time && <span className="text-green-600 font-bold flex items-center gap-1"><Clock size={14}/> Đã Check-in</span>} {c.admin_reply && <span className="text-purple-600 font-bold flex items-center gap-1"><MessageSquareReply size={14}/> Đã trả lời</span>} </div> </div> <div className="flex flex-col gap-2 min-w-[140px]"> <Button size="sm" variant="secondary" className="w-full border" onClick={() => handleInspect(c)}><CheckCircle size={14} className="mr-2"/> Kiểm tra</Button> <Button size="sm" className="bg-blue-600 hover:bg-blue-700 w-full" onClick={() => { setForwardModal({isOpen: true, contact: c}); setTransferStep('select'); }}><Send size={14} className="mr-2"/> Chuyển NV</Button> <Button size="sm" variant="outline" className="text-green-600 border-green-200 hover:bg-green-50 w-full" onClick={() => setReplyModal({isOpen: true, contact: c})}><MessageSquareReply size={14} className="mr-2"/> Phản hồi</Button> <Button size="sm" variant="ghost" className="text-red-400 hover:text-red-600 w-full" onClick={() => handleDeleteClick(c, 'contact')}><Trash2 size={14} className="mr-2"/> Xóa</Button> </div> </div> ))} </div> )}
 
             {/* 3. TAB SERVICES */}
-            {activeTab === 'services' && (
-                <div>
-                    <div className="mb-8 border-b pb-8">
-                        <h3 className="font-bold text-gray-800 text-lg mb-4 flex items-center gap-2"><FileBadge className="text-orange-600"/> Yêu cầu mở dịch vụ từ Nhân viên</h3>
-                        <div className="bg-white rounded-lg border overflow-hidden">
-                            <table className="w-full text-left text-sm">
-                                <thead className="bg-gray-50 text-gray-600"><tr><th className="p-3">Nhân viên</th><th className="p-3">Dịch vụ xin mở</th><th className="p-3">Trạng thái</th><th className="p-3 text-right">Xử lý</th></tr></thead>
-                                <tbody>
-                                    {serviceRequests.filter(r => r.status === 'pending').length === 0 && (<tr><td colSpan={4} className="p-4 text-center text-gray-400 italic">Không có yêu cầu nào đang chờ.</td></tr>)}
-                                    {serviceRequests.map(req => (
-                                        <tr key={req.id} className={`border-t ${req.status === 'pending' ? 'bg-yellow-50/50' : 'opacity-60'}`}>
-                                            <td className="p-3 font-bold">{req.staff?.full_name}</td>
-                                            <td className="p-3 text-blue-700">{req.service?.name}</td>
-                                            <td className="p-3"><span className={`px-2 py-1 rounded text-xs font-bold ${req.status==='approved'?'bg-green-100 text-green-700':req.status==='rejected'?'bg-red-100 text-red-700':'bg-yellow-100 text-yellow-700'}`}>{req.status === 'approved' ? 'Đã duyệt' : req.status === 'rejected' ? 'Đã từ chối' : 'Chờ duyệt'}</span></td>
-                                            <td className="p-3 text-right">
-                                                {req.status === 'pending' && (
-                                                    <div className="flex justify-end gap-2">
-                                                        <Button size="sm" onClick={() => setEditingUser(req.staff)} variant="outline" className="h-7 text-xs">Xem Hồ sơ</Button>
-                                                        <Button size="sm" onClick={() => setRejectReasonModal({isOpen: true, reqId: req.id, staffId: req.staff_id})} className="bg-red-500 hover:bg-red-600 h-7 text-xs">Từ chối</Button>
-                                                        <Button size="sm" onClick={() => handleApproveRequest(req)} className="bg-green-600 hover:bg-green-700 h-7 text-xs">Duyệt ngay</Button>
-                                                    </div>
-                                                )}
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                    <div className="flex justify-end mb-4">
-                        <Button className="bg-green-600 hover:bg-green-700" onClick={() => setAddServiceModal(true)}>
-                            <Plus size={18} className="mr-2"/> Thêm Dịch Vụ Mới
-                        </Button>
-                    </div>
-                    <div className="grid md:grid-cols-2 gap-4">
-                        {services.map(s => (
-                            <div key={s.id} className="border p-4 rounded-lg hover:shadow-md transition relative group bg-white">
-                                <h3 className="font-bold text-lg text-blue-700">{s.name}</h3>
-                                <p className="text-xl font-bold text-gray-800 my-1">{s.price}</p>
-                                <p className="text-sm text-gray-500 mb-2">{s.description}</p>
-                                <div className="bg-orange-50 border border-orange-100 p-2 rounded text-xs text-orange-800 flex gap-2 items-start mt-2">
-                                    <FileBadge size={14} className="shrink-0 mt-0.5"/>
-                                    <span><strong>Yêu cầu:</strong> {s.requirements || "Không có yêu cầu đặc biệt."}</span>
-                                </div>
-                                <div className="absolute top-3 right-3 flex gap-1 opacity-0 group-hover:opacity-100 transition">
-                                    <button onClick={() => setEditingService(s)} className="p-2 bg-blue-100 text-blue-600 rounded hover:bg-blue-200"><Pencil size={16} /></button>
-                                    <button onClick={() => handleDeleteClick(s, 'service')} className="p-2 bg-red-100 text-red-600 rounded hover:bg-red-200"><Trash2 size={16} /></button>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-            )}
+            {activeTab === 'services' && ( <div> <div className="mb-8 border-b pb-8"> <h3 className="font-bold text-gray-800 text-lg mb-4 flex items-center gap-2"><FileBadge className="text-orange-600"/> Yêu cầu mở dịch vụ từ Nhân viên</h3> <div className="bg-white rounded-lg border overflow-hidden"> <table className="w-full text-left text-sm"> <thead className="bg-gray-50 text-gray-600"><tr><th className="p-3">Nhân viên</th><th className="p-3">Dịch vụ xin mở</th><th className="p-3">Trạng thái</th><th className="p-3 text-right">Xử lý</th></tr></thead> <tbody> {serviceRequests.filter(r => r.status === 'pending').length === 0 && (<tr><td colSpan={4} className="p-4 text-center text-gray-400 italic">Không có yêu cầu nào đang chờ.</td></tr>)} {serviceRequests.map(req => ( <tr key={req.id} className={`border-t ${req.status === 'pending' ? 'bg-yellow-50/50' : 'opacity-60'}`}> <td className="p-3 font-bold">{req.staff?.full_name}</td> <td className="p-3 text-blue-700">{req.service?.name}</td> <td className="p-3"><span className={`px-2 py-1 rounded text-xs font-bold ${req.status==='approved'?'bg-green-100 text-green-700':req.status==='rejected'?'bg-red-100 text-red-700':'bg-yellow-100 text-yellow-700'}`}>{req.status === 'approved' ? 'Đã duyệt' : req.status === 'rejected' ? 'Đã từ chối' : 'Chờ duyệt'}</span></td> <td className="p-3 text-right"> {req.status === 'pending' && ( <div className="flex justify-end gap-2"> <Button size="sm" onClick={() => setEditingUser(req.staff)} variant="outline" className="h-7 text-xs">Xem Hồ sơ</Button> <Button size="sm" onClick={() => setRejectReasonModal({isOpen: true, reqId: req.id, staffId: req.staff_id})} className="bg-red-500 hover:bg-red-600 h-7 text-xs">Từ chối</Button> <Button size="sm" onClick={() => handleApproveRequest(req)} className="bg-green-600 hover:bg-green-700 h-7 text-xs">Duyệt ngay</Button> </div> )} </td> </tr> ))} </tbody> </table> </div> </div> <div className="flex justify-end mb-4"> <Button className="bg-green-600 hover:bg-green-700" onClick={() => setAddServiceModal(true)}> <Plus size={18} className="mr-2"/> Thêm Dịch Vụ Mới </Button> </div> <div className="grid md:grid-cols-2 gap-4"> {services.map(s => ( <div key={s.id} className="border p-4 rounded-lg hover:shadow-md transition relative group bg-white"> <h3 className="font-bold text-lg text-blue-700">{s.name}</h3> <p className="text-xl font-bold text-gray-800 my-1">{s.price}</p> <p className="text-sm text-gray-500 mb-2">{s.description}</p> <div className="bg-orange-50 border border-orange-100 p-2 rounded text-xs text-orange-800 flex gap-2 items-start mt-2"> <FileBadge size={14} className="shrink-0 mt-0.5"/> <span><strong>Yêu cầu:</strong> {s.requirements || "Không có yêu cầu đặc biệt."}</span> </div> <div className="absolute top-3 right-3 flex gap-1 opacity-0 group-hover:opacity-100 transition"> <button onClick={() => setEditingService(s)} className="p-2 bg-blue-100 text-blue-600 rounded hover:bg-blue-200"><Pencil size={16} /></button> <button onClick={() => handleDeleteClick(s, 'service')} className="p-2 bg-red-100 text-red-600 rounded hover:bg-red-200"><Trash2 size={16} /></button> </div> </div> ))} </div> </div> )}
 
             {/* 4. TAB TRANSACTIONS */}
-            {activeTab === 'transactions' && (
-                <div className="overflow-x-auto">
-                    <table className="w-full text-left border-collapse">
-                        <thead className="bg-gray-50 text-gray-600 text-sm"><tr><th className="p-3">Thời gian</th><th className="p-3">Loại</th><th className="p-3">Nội dung</th><th className="p-3">Người nhận</th><th className="p-3 text-right">Số tiền</th></tr></thead>
-                        <tbody>
-                            {transactions.map(tx => (
-                                <tr key={tx.id} className="border-t hover:bg-gray-50">
-                                    <td className="p-3 text-sm text-gray-500">{new Date(tx.created_at).toLocaleString()}</td>
-                                    <td className="p-3"><span className={`px-2 py-1 rounded-full text-xs font-bold ${tx.type === 'deposit' ? 'bg-blue-100 text-blue-700' : tx.type === 'bonus' ? 'bg-yellow-100 text-yellow-700' : 'bg-gray-100'}`}>{tx.type === 'deposit' ? 'Nạp quỹ' : tx.type === 'bonus' ? 'Thưởng nóng' : 'Khác'}</span></td>
-                                    <td className="p-3 text-sm font-medium">{tx.description}</td>
-                                    <td className="p-3 text-sm">{tx.type === 'deposit' ? 'Quỹ Admin' : (tx.receiver?.full_name || '...')}</td>
-                                    <td className={`p-3 text-right font-mono font-bold ${tx.type === 'deposit' ? 'text-green-600' : 'text-red-600'}`}>{tx.type === 'deposit' ? '+' : '-'}{tx.amount.toLocaleString()} đ</td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                </div>
-            )}
+            {activeTab === 'transactions' && ( <div className="overflow-x-auto"> <table className="w-full text-left border-collapse"> <thead className="bg-gray-50 text-gray-600 text-sm"><tr><th className="p-3">Thời gian</th><th className="p-3">Loại</th><th className="p-3">Nội dung</th><th className="p-3">Người nhận</th><th className="p-3 text-right">Số tiền</th></tr></thead> <tbody> {transactions.map(tx => ( <tr key={tx.id} className="border-t hover:bg-gray-50"> <td className="p-3 text-sm text-gray-500">{new Date(tx.created_at).toLocaleString()}</td> <td className="p-3"><span className={`px-2 py-1 rounded-full text-xs font-bold ${tx.type === 'deposit' ? 'bg-blue-100 text-blue-700' : tx.type === 'bonus' ? 'bg-yellow-100 text-yellow-700' : 'bg-gray-100'}`}>{tx.type === 'deposit' ? 'Nạp quỹ' : tx.type === 'bonus' ? 'Thưởng nóng' : 'Khác'}</span></td> <td className="p-3 text-sm font-medium">{tx.description}</td> <td className="p-3 text-sm">{tx.type === 'deposit' ? 'Quỹ Admin' : (tx.receiver?.full_name || '...')}</td> <td className={`p-3 text-right font-mono font-bold ${tx.type === 'deposit' ? 'text-green-600' : 'text-red-600'}`}>{tx.type === 'deposit' ? '+' : '-'}{tx.amount.toLocaleString()} đ</td> </tr> ))} </tbody> </table> </div> )}
 
             {/* 5. TAB CHAT */}
-            {activeTab === 'chat' && (
-                <div className="flex h-[500px] border rounded-lg overflow-hidden bg-white">
-                    <div className="w-1/3 border-r flex flex-col bg-gray-50">
-                        <div className="p-3 border-b font-bold text-gray-700">Hộp thư hỗ trợ</div>
-                        <div className="flex-1 overflow-y-auto">
-                            {chatUsers.length === 0 && <p className="p-4 text-sm text-gray-400">Chưa có tin nhắn.</p>}
-                            {chatUsers.map(u => (
-                                <div key={u.id} onClick={() => selectChatUser(u)} className={`p-3 border-b cursor-pointer hover:bg-blue-50 transition flex items-center gap-3 ${selectedChatUser?.id === u.id ? 'bg-blue-100' : ''}`}>
-                                    <div className="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center font-bold text-gray-600">{u.full_name?.charAt(0)}</div>
-                                    <div><p className="text-sm font-bold text-gray-800">{u.full_name}</p><p className="text-xs text-gray-500">{u.role === 'staff' ? 'Nhân viên' : 'Khách hàng'}</p></div>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                    <div className="w-2/3 flex flex-col">
-                        {selectedChatUser ? (
-                            <>
-                                <div className="p-3 border-b bg-white flex justify-between items-center shadow-sm"><span className="font-bold text-gray-800 flex items-center gap-2">Chat với: {selectedChatUser.full_name}</span><span className="text-xs text-green-600">● Đang kết nối</span></div>
-                                <div className="flex-1 p-4 overflow-y-auto bg-gray-100 space-y-3">
-                                    {adminChatMessages.map(msg => {
-                                        const isMe = msg.sender_id === user?.id;
-                                        return (
-                                            <div key={msg.id} className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}>
-                                                <div className={`max-w-[70%] p-3 rounded-xl text-sm shadow-sm ${isMe ? 'bg-blue-600 text-white rounded-br-none' : 'bg-white text-gray-800 rounded-bl-none'}`}>
-                                                    {msg.content}
-                                                    <p className={`text-[10px] mt-1 text-right ${isMe ? 'text-blue-200' : 'text-gray-400'}`}>{new Date(msg.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</p>
-                                                </div>
-                                            </div>
-                                        )
-                                    })}
-                                    <div ref={chatEndRef}/>
-                                </div>
-                                <div className="p-3 bg-white border-t flex gap-2">
-                                    <Input value={adminChatInput} onChange={e => setAdminChatInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleAdminSendChat()} placeholder="Nhập tin nhắn..." />
-                                    <Button onClick={handleAdminSendChat} className="bg-blue-600 hover:bg-blue-700"><Send size={18}/></Button>
-                                </div>
-                            </>
-                        ) : (
-                            <div className="flex-1 flex items-center justify-center text-gray-400 flex-col"><MessageSquare size={48} className="mb-2 opacity-20"/><p>Chọn một nhân viên để bắt đầu chat</p></div>
-                        )}
-                    </div>
-                </div>
-            )}
+            {activeTab === 'chat' && ( <div className="flex h-[500px] border rounded-lg overflow-hidden bg-white"> <div className="w-1/3 border-r flex flex-col bg-gray-50"> <div className="p-3 border-b font-bold text-gray-700">Hộp thư hỗ trợ</div> <div className="flex-1 overflow-y-auto"> {chatUsers.length === 0 && <p className="p-4 text-sm text-gray-400">Chưa có tin nhắn.</p>} {chatUsers.map(u => ( <div key={u.id} onClick={() => selectChatUser(u)} className={`p-3 border-b cursor-pointer hover:bg-blue-50 transition flex items-center gap-3 ${selectedChatUser?.id === u.id ? 'bg-blue-100' : ''}`}> <div className="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center font-bold text-gray-600">{u.full_name?.charAt(0)}</div> <div><p className="text-sm font-bold text-gray-800">{u.full_name}</p><p className="text-xs text-gray-500">{u.role === 'staff' ? 'Nhân viên' : 'Khách hàng'}</p></div> </div> ))} </div> </div> <div className="w-2/3 flex flex-col"> {selectedChatUser ? ( <> <div className="p-3 border-b bg-white flex justify-between items-center shadow-sm"><span className="font-bold text-gray-800 flex items-center gap-2">Chat với: {selectedChatUser.full_name}</span><span className="text-xs text-green-600">● Đang kết nối</span></div> <div className="flex-1 p-4 overflow-y-auto bg-gray-100 space-y-3"> {adminChatMessages.map(msg => { const isMe = msg.sender_id === user?.id; return ( <div key={msg.id} className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}> <div className={`max-w-[70%] p-3 rounded-xl text-sm shadow-sm ${isMe ? 'bg-blue-600 text-white rounded-br-none' : 'bg-white text-gray-800 rounded-bl-none'}`}> {msg.content} <p className={`text-[10px] mt-1 text-right ${isMe ? 'text-blue-200' : 'text-gray-400'}`}>{new Date(msg.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</p> </div> </div> ) })} <div ref={chatEndRef}/> </div> <div className="p-3 bg-white border-t flex gap-2"> <Input value={adminChatInput} onChange={e => setAdminChatInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleAdminSendChat()} placeholder="Nhập tin nhắn..." /> <Button onClick={handleAdminSendChat} className="bg-blue-600 hover:bg-blue-700"><Send size={18}/></Button> </div> </> ) : ( <div className="flex-1 flex items-center justify-center text-gray-400 flex-col"><MessageSquare size={48} className="mb-2 opacity-20"/><p>Chọn một nhân viên để bắt đầu chat</p></div> )} </div> </div> )}
         </div>
       </div>
 
       {/* ================= MODAL SECTION ================= */}
+      
+      {/* 1. Modal Chuyển Đơn Bảo Mật (NEW) */}
+      {forwardModal && (
+        <div className="fixed inset-0 bg-black/50 z-[9999] flex items-center justify-center p-4">
+            <div className="bg-white rounded-xl shadow-xl w-full max-w-lg p-6 max-h-[80vh] overflow-y-auto animate-in zoom-in-95">
+                <div className="flex justify-between items-center mb-4 border-b pb-2"><h3 className="font-bold text-lg">Chuyển đơn cho nhân viên</h3><button onClick={() => setForwardModal(null)}><X size={20}/></button></div>
+                
+                {transferStep === 'select' ? (
+                    // BƯỚC 1: CHỌN NHÂN VIÊN
+                    <>
+                        <p className="text-sm text-gray-500 mb-4">Nội dung đơn: <span className="italic">"{forwardModal.contact.message}"</span></p>
+                        <Input value={transferReason} onChange={e => setTransferReason(e.target.value)} placeholder="Nhập lý do chuyển đơn (Bắt buộc)..." className="mb-4"/>
+                        <div className="space-y-2 max-h-60 overflow-y-auto">
+                            {getRecommendedStaff(forwardModal.contact.message).map(staff => {
+                                const isRecommended = staff.specialties && forwardModal.contact.message.toLowerCase().includes(staff.specialties.toLowerCase());
+                                return (
+                                    <div key={staff.id} className={`p-3 border rounded-lg flex justify-between items-center hover:bg-gray-50`}>
+                                        <div>
+                                            <p className="font-bold text-gray-800 flex items-center gap-2">{staff.full_name} {isRecommended && <span className="bg-green-600 text-white text-[10px] px-2 rounded-full">Phù hợp</span>}</p>
+                                            <p className="text-xs text-gray-500">{staff.specialties || "Chưa cập nhật chuyên môn"}</p>
+                                        </div>
+                                        <Button size="sm" onClick={() => initiateTransfer(staff.id)}>Chọn & Gửi OTP</Button>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </>
+                ) : (
+                    // BƯỚC 2: NHẬP OTP
+                    <div className="text-center">
+                        <div className="bg-blue-50 p-4 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-4 text-blue-600"><Lock size={32}/></div>
+                        <h4 className="font-bold text-lg mb-2">Xác thực chuyển đơn</h4>
+                        <p className="text-sm text-gray-500 mb-6">Mã xác thực 6 số đã được gửi đến email Admin của bạn. Vui lòng nhập để tiếp tục.</p>
+                        <Input 
+                            value={otpInput} 
+                            onChange={e => setOtpInput(e.target.value)} 
+                            placeholder="Nhập mã OTP..." 
+                            className="text-center text-2xl font-bold tracking-widest h-14 mb-4" 
+                            maxLength={6}
+                        />
+                        <div className="flex gap-2">
+                            <Button variant="outline" onClick={() => setTransferStep('select')} className="flex-1">Quay lại</Button>
+                            <Button onClick={confirmTransfer} className="flex-1 bg-green-600 hover:bg-green-700">Xác nhận Chuyển</Button>
+                        </div>
+                    </div>
+                )}
+            </div>
+        </div>
+      )}
+
+      {/* Các Modal cũ giữ nguyên */}
       {rejectReasonModal && (<div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 p-4"><div className="bg-white p-6 rounded-xl w-full max-w-sm animate-in zoom-in-95"><h3 className="font-bold mb-2 text-red-600">Lý do từ chối?</h3><Textarea value={rejectReason} onChange={e => setRejectReason(e.target.value)} placeholder="VD: Thiếu chứng chỉ hành nghề..." className="mb-4"/><div className="flex justify-end gap-2"><Button variant="outline" onClick={() => setRejectReasonModal(null)}>Hủy</Button><Button className="bg-red-600 hover:bg-red-700" onClick={handleRejectRequest}>Xác nhận Từ chối</Button></div></div></div>)}
       {addServiceModal && (<div className="fixed inset-0 bg-black/50 z-[9999] flex items-center justify-center p-4"><div className="bg-white rounded-xl shadow-xl w-full max-w-md p-6 animate-in zoom-in-95"><div className="flex justify-between items-center mb-4 border-b pb-2"><h3 className="font-bold text-lg text-green-700 flex items-center gap-2"><Plus/> Thêm Dịch Vụ Mới</h3><button onClick={() => setAddServiceModal(false)}><X size={20}/></button></div><div className="space-y-4"><div><label className="text-sm font-medium">Tên dịch vụ *</label><Input value={newService.name} onChange={e => setNewService({...newService, name: e.target.value})} placeholder="VD: Chăm sóc người già..."/></div><div><label className="text-sm font-medium">Giá tiền (VNĐ) *</label><Input value={newService.price} onChange={e => setNewService({...newService, price: e.target.value})} placeholder="VD: 200.000 đ/giờ"/></div><div><label className="text-sm font-medium">Mô tả chi tiết</label><Textarea value={newService.description} onChange={e => setNewService({...newService, description: e.target.value})} rows={2} placeholder="Mô tả công việc..."/></div><div><label className="text-sm font-bold text-orange-700 flex items-center gap-1 mb-1"><FileBadge size={14}/> Điều kiện mở dịch vụ</label><Textarea value={newService.requirements} onChange={e => setNewService({...newService, requirements: e.target.value})} rows={3} placeholder="VD: Cần chứng chỉ điều dưỡng, Bằng tốt nghiệp loại Khá trở lên..." className="bg-orange-50/50 border-orange-200 focus:border-orange-400"/><p className="text-[11px] text-gray-500 mt-1">Nhân viên cần có các bằng cấp này trong hồ sơ để thực hiện dịch vụ.</p></div><Button onClick={handleAddService} className="w-full bg-green-600 hover:bg-green-700">Tạo Dịch Vụ</Button></div></div></div>)}
       {editingService && (<div className="fixed inset-0 bg-black/50 z-[9999] flex items-center justify-center p-4"><div className="bg-white rounded-xl shadow-xl w-full max-w-md p-6 animate-in zoom-in-95"><div className="flex justify-between items-center mb-4 border-b pb-2"><h3 className="font-bold text-lg">Cập nhật Dịch vụ</h3><button onClick={() => setEditingService(null)}><X size={20}/></button></div><div className="space-y-4"><div><label className="text-sm font-medium">Tên dịch vụ</label><Input value={editingService.name} onChange={e => setEditingService({...editingService, name: e.target.value})} /></div><div><label className="text-sm font-medium">Giá tiền</label><Input value={editingService.price} onChange={e => setEditingService({...editingService, price: e.target.value})} /></div><div><label className="text-sm font-medium">Mô tả</label><Textarea value={editingService.description} onChange={e => setEditingService({...editingService, description: e.target.value})} rows={2} /></div><div><label className="text-sm font-bold text-orange-700 flex items-center gap-1 mb-1"><FileBadge size={14}/> Điều kiện mở dịch vụ</label><Textarea value={editingService.requirements || ''} onChange={e => setEditingService({...editingService, requirements: e.target.value})} rows={3} className="bg-orange-50/50 border-orange-200 focus:border-orange-400"/></div><Button onClick={handleUpdateService} className="w-full bg-green-600 hover:bg-green-700">Lưu Thay Đổi</Button></div></div></div>)}
@@ -393,7 +293,6 @@ const AdminDashboard = () => {
       {inspectModal && (<div className="fixed inset-0 bg-black/60 z-[9999] flex items-center justify-center p-4"><div className="bg-white rounded-xl shadow-xl w-full max-w-3xl p-6 max-h-[90vh] overflow-y-auto animate-in zoom-in-95"><div className="flex justify-between items-center mb-4 border-b pb-2"><h3 className="font-bold text-lg">Kiểm tra: {inspectModal.name}</h3><button onClick={() => setInspectModal(null)}><X size={20}/></button></div><div className="grid md:grid-cols-2 gap-6"><div className="space-y-4"><h4 className="font-bold text-blue-700 border-b pb-1">📸 Ảnh Chấm công</h4><div className="border p-3 rounded bg-green-50/30"><p className="text-xs font-bold text-green-700 mb-1">Check-in:</p>{inspectModal.check_in_time ? <><p className="text-xs mb-2">{new Date(inspectModal.check_in_time).toLocaleString()}</p><img src={inspectModal.check_in_img} onClick={() => setPreviewImage(inspectModal.check_in_img)} className="w-full h-32 object-cover rounded border cursor-zoom-in"/></> : <span className="text-gray-400 text-sm">Chưa có</span>}</div><div className="border p-3 rounded bg-orange-50/30"><p className="text-xs font-bold text-orange-700 mb-1">Check-out:</p>{inspectModal.check_out_time ? <><p className="text-xs mb-2">{new Date(inspectModal.check_out_time).toLocaleString()}</p><img src={inspectModal.check_out_img} onClick={() => setPreviewImage(inspectModal.check_out_img)} className="w-full h-32 object-cover rounded border cursor-zoom-in"/></> : <span className="text-gray-400 text-sm">Chưa có</span>}</div></div><div><h4 className="font-bold text-purple-700 border-b pb-1 mb-3">🎥 Video Báo cáo</h4><div className="space-y-3 h-[400px] overflow-y-auto">{jobLogs.length === 0 && <p className="text-sm text-gray-400 italic">Chưa có video.</p>}{jobLogs.map(log => (<div key={log.id} className="border p-2 rounded bg-gray-50"><video src={log.video_url} controls className="w-full rounded bg-black h-40" /><p className="text-[10px] text-gray-500 mt-1">{new Date(log.created_at).toLocaleString()}</p></div>))}</div></div></div></div></div>)}
       {previewImage && (<div className="fixed inset-0 z-[10000] bg-black/90 flex items-center justify-center p-4" onClick={() => setPreviewImage(null)}><img src={previewImage} className="max-w-full max-h-full rounded-lg shadow-2xl animate-in zoom-in-95"/><button className="absolute top-4 right-4 text-white hover:text-gray-300"><X size={32}/></button></div>)}
       {deleteModal && deleteModal.isOpen && (<div className="fixed inset-0 z-[9999] flex items-center justify-center px-4 bg-black/60 backdrop-blur-sm"><div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6 text-center animate-in zoom-in-95"><div className="w-16 h-16 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto mb-4"><AlertTriangle size={32} /></div><h3 className="text-xl font-bold mb-2">{deleteModal.title}</h3><p className="text-gray-600 mb-6 text-sm">{deleteModal.message}</p><div className="flex gap-3 justify-center"><Button variant="outline" onClick={() => setDeleteModal(null)} className="w-full">Hủy</Button><Button onClick={executeDelete} className="w-full bg-red-600 hover:bg-red-700 text-white font-bold">Xóa Vĩnh Viễn</Button></div></div></div>)}
-      {forwardModal && (<div className="fixed inset-0 bg-black/50 z-[9999] flex items-center justify-center p-4"><div className="bg-white rounded-xl shadow-xl w-full max-w-lg p-6 max-h-[80vh] overflow-y-auto animate-in zoom-in-95"><div className="flex justify-between items-center mb-4 border-b pb-2"><h3 className="font-bold text-lg">Chuyển đơn cho nhân viên</h3><button onClick={() => setForwardModal(null)}><X size={20}/></button></div><p className="text-sm text-gray-500 mb-4">Nội dung đơn: <span className="italic">"{forwardModal.contact.message}"</span></p><div className="space-y-2">{getRecommendedStaff(forwardModal.contact.message).map(staff => {const isRecommended = staff.specialties && forwardModal.contact.message.toLowerCase().includes(staff.specialties.toLowerCase());return (<div key={staff.id} className={`p-3 border rounded-lg flex justify-between items-center hover:bg-gray-50 ${isRecommended ? 'bg-green-50 border-green-200 ring-1 ring-green-200' : ''}`}><div><p className="font-bold text-gray-800 flex items-center gap-2">{staff.full_name} {isRecommended && <span className="bg-green-600 text-white text-[10px] px-2 rounded-full">Phù hợp nhất</span>}</p><p className="text-xs text-gray-500">{staff.specialties || "Chưa cập nhật chuyên môn"}</p></div><Button size="sm" onClick={() => handleAssignStaff(staff.id)}>Chọn</Button></div>);})}</div></div></div>)}
       {replyModal && (<div className="fixed inset-0 bg-black/50 z-[9999] flex items-center justify-center p-4"><div className="bg-white rounded-xl shadow-xl w-full max-w-md p-6 animate-in zoom-in-95"><div className="flex justify-between items-center mb-4 border-b pb-2"><h3 className="font-bold text-lg">Phản hồi khách hàng</h3><button onClick={() => setReplyModal(null)}><X size={20}/></button></div><div className="space-y-4"><p className="text-sm text-gray-600">Khách hàng: <strong>{replyModal.contact.name}</strong></p><Textarea placeholder="Nhập nội dung..." rows={5} value={replyText} onChange={(e) => setReplyText(e.target.value)} /><div className="flex justify-end gap-2"><Button variant="outline" onClick={() => setReplyModal(null)}>Hủy</Button><Button className="bg-green-600 hover:bg-green-700" onClick={handleReply}>Lưu & Gửi</Button></div></div></div></div>)}
       {editingUser && (<div className="fixed inset-0 bg-black/50 z-[9999] flex items-center justify-center p-4"><div className="bg-white rounded-xl shadow-xl w-full max-w-md p-6 animate-in zoom-in-95"><div className="flex justify-between items-center mb-4 border-b pb-2"><h3 className="font-bold text-lg">Sửa thông tin</h3><button onClick={() => setEditingUser(null)}><X size={20}/></button></div><div className="space-y-4"><div><label className="text-sm font-medium">Họ Tên</label><Input value={editingUser.full_name || ''} onChange={e => setEditingUser({...editingUser, full_name: e.target.value})} /></div><div><label className="text-sm font-medium">SĐT</label><Input value={editingUser.phone || ''} onChange={e => setEditingUser({...editingUser, phone: e.target.value})} /></div><div><label className="text-sm font-medium">Vai trò</label><select className="w-full border rounded-md p-2 bg-white" value={editingUser.role} onChange={e => setEditingUser({...editingUser, role: e.target.value})}><option value="customer">Khách hàng</option><option value="staff">Nhân viên</option><option value="admin">Admin</option></select></div><Button onClick={handleUpdateUser} className="w-full bg-blue-600 hover:bg-blue-700">Lưu Thay Đổi</Button></div></div></div>)}
 

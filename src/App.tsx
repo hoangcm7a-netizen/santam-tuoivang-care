@@ -20,6 +20,8 @@ import Messages from "./pages/Messages";
 import ChatRoom from "./pages/ChatRoom";
 import StaffChat from "./pages/StaffChat";
 import ScrollToTop from "@/components/ScrollToTop";
+import JobChat from "./pages/JobChat";
+import CustomerWallet from "./pages/CustomerWallet";
 
 const queryClient = new QueryClient();
 
@@ -46,6 +48,8 @@ const App = () => (
               <Route path="/messages" element={<Messages />} />
               <Route path="/chat/:id" element={<ChatRoom />} />
               <Route path="/staff-chat" element={<StaffChat/>} />
+              <Route path="/job-chat/:jobId/:partnerId" element={<JobChat />} />
+              <Route path="/wallet" element={<CustomerWallet />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </Layout>
