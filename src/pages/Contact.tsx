@@ -1,298 +1,305 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
+import { useParams, useNavigate } from "react-router-dom";
+import { useAuth } from "@/lib/AuthContext";
+import { supabase } from "@/lib/supabase";
+import Navigation from "@/components/Navigation";
+import { Send, ArrowLeft, CheckCircle, Briefcase } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Label } from "@/components/ui/label";
-import { Phone, Mail, MapPin, Clock, MessageSquare, Lock, User, PlusCircle, CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
-import { useAuth } from '@/lib/AuthContext';
-import { useNavigate, Link } from 'react-router-dom';
-import { supabase } from '@/lib/supabase'; // Import Supabase để lấy hồ sơ
 
-// Định nghĩa kiểu dữ liệu Hồ sơ bệnh nhân
-type Patient = {
-  id: string;
-  full_name: string;
-  dob: string;
-  pathology: string;
-};
+// --- KHAI BÁO KIỂU DỮ LIỆU ĐỂ LOẠI BỎ HOÀN TOÀN "ANY" ---
+interface Message {
+    id: string;
+    sender_id: string;
+    receiver_id: string;
+    contact_id: string;
+    content: string;
+    created_at: string;
+    is_staff_reply: boolean;
+    is_read?: boolean;
+}
 
-const Contact = () => {
-  const [formData, setFormData] = useState({
-    name: "",
-    email: "",
-    phone: "",
-    message: "",
-  });
-  
-  const { user, profile } = useAuth(); // Lấy thêm profile để check role
-  const navigate = useNavigate();
-  const [showLoginModal, setShowLoginModal] = useState(false);
-  
-  // --- STATE MỚI CHO TÍNH NĂNG CHỌN HỒ SƠ ---
-  const [patients, setPatients] = useState<Patient[]>([]);
-  const [selectedPatientId, setSelectedPatientId] = useState<string | null>(null);
-  const [loadingPatients, setLoadingPatients] = useState(false);
+interface JobInfo {
+    id: string;
+    name: string;
+    assigned_staff_id: string | null;
+    status: string;
+}
 
-  // 1. Tải danh sách hồ sơ khi người dùng vào trang (Nếu là khách hàng)
-  useEffect(() => {
-    if (user && profile?.role === 'customer') {
-      const fetchPatients = async () => {
-        setLoadingPatients(true);
-        const { data, error } = await supabase
-          .from('patient_records')
-          .select('*')
-          .eq('user_id', user.id);
-        
-        if (!error && data) {
-          setPatients(data);
+interface PartnerInfo {
+    id: string;
+    full_name: string;
+}
+
+const JobChat = () => {
+    const { jobId, partnerId } = useParams<{ jobId: string; partnerId: string }>();
+    const { user, profile } = useAuth();
+    const navigate = useNavigate();
+
+    const [messages, setMessages] = useState<Message[]>([]);
+    const [newMessage, setNewMessage] = useState<string>("");
+    const [jobInfo, setJobInfo] = useState<JobInfo | null>(null);
+    const [partnerInfo, setPartnerInfo] = useState<PartnerInfo | null>(null);
+    const messagesEndRef = useRef<HTMLDivElement>(null);
+
+    const scrollToBottom = useCallback(() => {
+        setTimeout(() => {
+            messagesEndRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+        }, 100);
+    }, []);
+
+    const markAsRead = useCallback(async () => {
+        if (!user || !jobId || !partnerId) return;
+        try {
+            const { error } = await supabase.from('chat_messages')
+                .update({ is_read: true })
+                .eq('contact_id', jobId)
+                .eq('receiver_id', user.id)
+                .eq('sender_id', partnerId)
+                .eq('is_read', false);
+            if (error) console.error("Lỗi đánh dấu đã đọc:", error);
+        } catch (err: unknown) {
+            if (err instanceof Error) console.error(err.message);
         }
-        setLoadingPatients(false);
-      };
-      fetchPatients();
-    }
-  }, [user, profile]);
+    }, [user, jobId, partnerId]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    // Check đăng nhập
-    if (!user) {
-        setShowLoginModal(true);
-        return;
-    }
-
-    // Validation cơ bản
-    if (!formData.name || !formData.email || !formData.phone || !formData.message) {
-      toast.error("Vui lòng điền đầy đủ thông tin liên hệ");
-      return;
-    }
-
-    // --- LOGIC MỚI: BẮT BUỘC CHỌN HỒ SƠ (Nếu là khách hàng và có hồ sơ) ---
-    if (profile?.role === 'customer') {
-        if (patients.length > 0 && !selectedPatientId) {
-            toast.error("Vui lòng chọn 1 hồ sơ người cần chăm sóc bên dưới!");
-            // Scroll xuống chỗ chọn hồ sơ để nhắc user (tuỳ chọn)
-            return;
+    const fetchJobInfo = useCallback(async () => {
+        if (!jobId) return;
+        try {
+            const { data, error } = await supabase.from('contacts').select('id, name, assigned_staff_id, status').eq('id', jobId).single();
+            if (error) throw error;
+            if (data) setJobInfo(data as JobInfo);
+        } catch (err: unknown) {
+            if (err instanceof Error) console.error("Lỗi tải thông tin đơn:", err.message);
         }
-    }
+    }, [jobId]);
 
-    // Validation Email/Phone
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(formData.email)) {
-      toast.error("Email không hợp lệ");
-      return;
-    }
-    const phoneRegex = /^[0-9]{10}$/;
-    if (!phoneRegex.test(formData.phone.replace(/\s/g, ""))) {
-      toast.error("Số điện thoại không hợp lệ");
-      return;
-    }
+    const fetchPartnerInfo = useCallback(async () => {
+        if (!partnerId) return;
+        try {
+            const { data, error } = await supabase.from('profiles').select('id, full_name').eq('id', partnerId).single();
+            if (error) throw error;
+            if (data) setPartnerInfo(data as PartnerInfo);
+        } catch (err: unknown) {
+            if (err instanceof Error) console.error("Lỗi tải đối tác:", err.message);
+        }
+    }, [partnerId]);
 
-    // --- GỬI DỮ LIỆU (CẬP NHẬT) ---
-    try {
-        const { error } = await supabase.from('contacts').insert([
-            {
-                user_id: user.id,
-                name: formData.name,
-                email: formData.email,
-                phone: formData.phone,
-                message: formData.message, 
-                status: 'new'
+    const fetchMessages = useCallback(async () => {
+        if (!jobId || !user || !partnerId) return;
+        try {
+            const { data, error } = await supabase
+                .from('chat_messages')
+                .select('*')
+                .eq('contact_id', jobId)
+                .order('created_at', { ascending: true });
+
+            if (error) throw error;
+
+            if (data) {
+                // Ép kiểu rõ ràng mảng data và định nghĩa kiểu cho msg trong vòng lặp filter
+                const filtered = (data as Message[]).filter((msg: Message) => {
+                    const isBetweenUs =
+                        (msg.sender_id === user.id && msg.receiver_id === partnerId) ||
+                        (msg.sender_id === partnerId && msg.receiver_id === user.id);
+                    return isBetweenUs;
+                });
+                setMessages(filtered);
+                scrollToBottom();
             }
-        ]);
-        
-        if (error) throw error;
+        } catch (err: unknown) {
+            if (err instanceof Error) console.error("Lỗi tải tin nhắn:", err.message);
+        }
+    }, [jobId, partnerId, user, scrollToBottom]);
 
-        toast.success("Đã gửi yêu cầu thành công! Chúng tôi sẽ liên hệ sớm nhất.");
-        
-        // Reset form
-        setFormData({ name: "", email: "", phone: "", message: "" });
-        setSelectedPatientId(null);
+    useEffect(() => {
+        if (user && jobId && partnerId) {
+            fetchJobInfo();
+            fetchPartnerInfo();
+            fetchMessages();
+            markAsRead();
 
-    } catch (err: any) {
-        toast.error("Lỗi khi gửi: " + err.message);
-    }
-  };
+            const channel = supabase
+                .channel(`job_chat_${jobId}`)
+                .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'chat_messages' },
+                    // Xử lý triệt để biến payload ngầm định
+                    (payload: Record<string, unknown>) => {
+                        const newMsg = payload.new as Message;
+                        if (newMsg.contact_id === jobId) {
+                            const isRelevant =
+                                (newMsg.sender_id === partnerId && newMsg.receiver_id === user.id) ||
+                                (newMsg.sender_id === user.id && newMsg.receiver_id === partnerId);
 
-  // ... (Giữ nguyên mảng contactInfo và supportChannels như code cũ) ...
-  const contactInfo = [
-      { icon: <Phone className="w-6 h-6" />, title: "Điện Thoại", content: "0372054418", subtext: "Lê Thị Phương Anh" },
-    { icon: <Mail className="w-6 h-6" />, title: "Email", content: "ntthunga3@gmail.com", subtext: "Phản hồi trong 24h" },
-    { icon: <MapPin className="w-6 h-6" />, title: "Địa Chỉ", content: "Thanh Hóa, Việt Nam", subtext: "Trường CĐ Y tế Thanh Hóa" },
-    { icon: <Clock className="w-6 h-6" />, title: "Giờ Làm Việc", content: "8:00 - 20:00", subtext: "Thứ 2 - Chủ Nhật" },
-  ];
-  const supportChannels = [
-    { icon: <Phone className="w-5 h-5" />, text: "Điện thoại" },
-    { icon: <MessageSquare className="w-5 h-5" />, text: "Chat trực tuyến" },
-    { icon: <Mail className="w-5 h-5" />, text: "Email" },
-  ];
+                            if (isRelevant && newMsg.sender_id !== user.id) {
+                                setMessages(prev => [...prev, newMsg]);
+                                scrollToBottom();
+                                markAsRead();
+                            }
+                        }
+                    }
+                )
+                .subscribe();
 
-  return (
-    <div className="min-h-screen pt-20 relative">
-      
-      {/* Modal Yêu cầu đăng nhập */}
-      {showLoginModal && (
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center px-4">
-           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowLoginModal(false)}></div>
-           <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-8 text-center relative z-10 animate-in zoom-in-95">
-              <div className="w-16 h-16 bg-orange-100 text-orange-600 rounded-full flex items-center justify-center mx-auto mb-5">
-                 <Lock size={32} />
-              </div>
-              <h3 className="text-xl font-bold text-gray-800 mb-3">Yêu cầu đăng nhập</h3>
-              <p className="text-gray-600 mb-8 text-sm">Bạn cần đăng nhập để gửi yêu cầu và chọn hồ sơ người thân.</p>
-              <div className="flex gap-3 justify-center">
-                 <Button variant="outline" onClick={() => setShowLoginModal(false)} className="w-full">Để sau</Button>
-                 <Button className="bg-[#e67e22] hover:bg-[#d35400] text-white w-full" onClick={() => navigate('/auth')}>Đăng nhập ngay</Button>
-              </div>
-           </div>
-        </div>
-      )}
+            return () => { supabase.removeChannel(channel); };
+        }
+    }, [user, jobId, partnerId, fetchJobInfo, fetchPartnerInfo, fetchMessages, markAsRead, scrollToBottom]);
 
-      {/* Header */}
-      <section className="bg-gradient-to-br from-primary to-primary/90 py-20">
-        <div className="container mx-auto px-4 text-center">
-          <h1 className="text-4xl md:text-5xl font-bold text-primary-foreground mb-6">Liên Hệ & Đặt Lịch</h1>
-          <p className="text-xl text-primary-foreground/90 max-w-3xl mx-auto">Chúng tôi luôn sẵn sàng lắng nghe và phục vụ</p>
-        </div>
-      </section>
+    const handleSend = async () => {
+        if (!newMessage.trim() || !user || !partnerId || !jobId) return;
 
-      {/* Main Content */}
-      <section className="py-20 bg-background">
-        <div className="container mx-auto px-4">
-          <div className="grid md:grid-cols-4 gap-6 mb-16">
-            {contactInfo.map((info, index) => (
-              <Card key={index} className="border-border hover:shadow-lg transition-shadow">
-                <CardContent className="p-6 text-center">
-                  <div className="w-14 h-14 rounded-2xl bg-accent/10 flex items-center justify-center mx-auto mb-4 text-accent">{info.icon}</div>
-                  <h3 className="font-semibold text-foreground mb-2">{info.title}</h3>
-                  <p className="text-lg font-medium text-primary mb-1">{info.content}</p>
-                  <p className="text-sm text-muted-foreground">{info.subtext}</p>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+        const content = newMessage;
+        setNewMessage("");
 
-          <div className="max-w-6xl mx-auto grid md:grid-cols-2 gap-12">
-            {/* Contact Form */}
-            <Card className="border-border shadow-md">
-              <CardContent className="p-8">
-                <h2 className="text-2xl font-bold text-foreground mb-6">Gửi Yêu Cầu Tư Vấn</h2>
-                <form onSubmit={handleSubmit} className="space-y-6">
-                  {/* Các input thông tin liên hệ */}
-                  <div className="grid md:grid-cols-2 gap-4">
-                      <div>
-                        <Label htmlFor="name">Họ và Tên *</Label>
-                        <Input id="name" value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} placeholder="Tên của bạn" className="mt-2" />
-                      </div>
-                      <div>
-                        <Label htmlFor="phone">Số Điện Thoại *</Label>
-                        <Input id="phone" type="tel" value={formData.phone} onChange={(e) => setFormData({ ...formData, phone: e.target.value })} placeholder="09xxx" className="mt-2" />
-                      </div>
-                  </div>
-                  <div>
-                    <Label htmlFor="email">Email *</Label>
-                    <Input id="email" type="email" value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} placeholder="email@example.com" className="mt-2" />
-                  </div>
-                  <div>
-                    <Label htmlFor="message">Nhu Cầu Chăm Sóc *</Label>
-                    <Textarea id="message" value={formData.message} onChange={(e) => setFormData({ ...formData, message: e.target.value })} placeholder="Mô tả nhu cầu..." className="mt-2 min-h-[100px]" />
-                  </div>
+        const tempId = Date.now().toString();
+        const optimisticMsg: Message = {
+            id: tempId,
+            sender_id: user.id,
+            receiver_id: partnerId,
+            contact_id: jobId,
+            content: content,
+            created_at: new Date().toISOString(),
+            is_staff_reply: profile?.role === 'staff'
+        };
 
-                  {/* --- PHẦN CHỌN HỒ SƠ NGƯỜI THÂN (MỚI) --- */}
-                  {user && profile?.role === 'customer' && (
-                    <div className="bg-gray-50 p-4 rounded-xl border-2 border-dashed border-gray-200">
-                        <div className="flex justify-between items-center mb-3">
-                            <Label className="text-base font-bold text-gray-700 flex items-center gap-2">
-                                <User className="w-4 h-4 text-orange-500"/> Chọn hồ sơ người cần chăm sóc
-                            </Label>
-                            <Link to="/profile" className="text-xs text-blue-600 hover:underline flex items-center gap-1">
-                                <PlusCircle className="w-3 h-3"/> Quản lý/Thêm mới
-                            </Link>
+        setMessages(prev => [...prev, optimisticMsg]);
+        scrollToBottom();
+
+        try {
+            const { error } = await supabase.from('chat_messages').insert({
+                sender_id: user.id,
+                receiver_id: partnerId,
+                contact_id: jobId,
+                content: content,
+                is_staff_reply: profile?.role === 'staff'
+            });
+
+            if (error) throw error;
+        } catch (err: unknown) {
+            if (err instanceof Error) {
+                console.error(err.message);
+                toast.error("Gửi lỗi, vui lòng thử lại");
+            }
+            setMessages(prev => prev.filter(m => m.id !== tempId));
+        }
+    };
+
+    const handleAcceptJob = async () => {
+        if (!jobId || !partnerId || !user) return;
+        if (!confirm(`Xác nhận giao việc cho nhân viên ${partnerInfo?.full_name}?`)) return;
+
+        try {
+            const { error } = await supabase.from('contacts').update({ assigned_staff_id: partnerId, status: 'processing' }).eq('id', jobId);
+            if (error) throw error;
+
+            await supabase.from('chat_messages').insert({
+                sender_id: user.id,
+                receiver_id: partnerId,
+                contact_id: jobId,
+                content: "✅ CHÚC MỪNG! Khách hàng đã chấp thuận bạn. Hợp đồng đã ký kết.",
+                is_staff_reply: false
+            });
+
+            fetchJobInfo();
+            toast.success("Đã giao việc thành công!");
+        } catch (err: unknown) {
+            if (err instanceof Error) toast.error("Lỗi: " + err.message);
+        }
+    };
+
+    const isCustomer = profile?.role === 'customer';
+    const isJobAssigned = jobInfo?.assigned_staff_id != null;
+    const isAssignedToThisStaff = jobInfo?.assigned_staff_id === partnerId;
+
+    return (
+        <div className="h-screen flex flex-col bg-gray-50 overflow-hidden">
+            <div className="shrink-0 z-50">
+                <Navigation />
+            </div>
+
+            <div className="flex-1 flex flex-col pt-16 max-w-3xl mx-auto w-full h-full relative shadow-2xl bg-white border-x border-gray-100">
+                <div className="shrink-0 bg-white p-3 border-b shadow-sm z-10">
+                    <div className="flex items-center gap-3">
+                        <Button variant="ghost" size="sm" onClick={() => navigate(-1)} className="p-0 h-8 w-8 hover:bg-gray-100 rounded-full">
+                            <ArrowLeft className="text-gray-600" />
+                        </Button>
+                        <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center text-white font-bold shadow-md">
+                            {partnerInfo?.full_name?.charAt(0).toUpperCase()}
+                        </div>
+                        <div className="flex-1 overflow-hidden">
+                            <h1 className="font-bold text-gray-800 truncate">{partnerInfo?.full_name}</h1>
+                            <p className="text-xs text-gray-500 flex items-center gap-1 truncate">
+                                <Briefcase size={12} /> {jobInfo?.name}
+                            </p>
                         </div>
 
-                        {loadingPatients ? (
-                            <p className="text-sm text-gray-500 text-center py-2">Đang tải hồ sơ...</p>
-                        ) : patients.length > 0 ? (
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                {patients.map((p) => (
-                                    <div 
-                                        key={p.id}
-                                        onClick={() => setSelectedPatientId(p.id)}
-                                        className={`cursor-pointer p-3 rounded-lg border transition-all relative ${
-                                            selectedPatientId === p.id 
-                                            ? "bg-orange-50 border-orange-500 ring-1 ring-orange-500" 
-                                            : "bg-white border-gray-200 hover:border-orange-300"
-                                        }`}
-                                    >
-                                        <div className="flex items-start gap-3">
-                                            <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${selectedPatientId === p.id ? "bg-orange-200 text-orange-700" : "bg-gray-100 text-gray-500"}`}>
-                                                <User size={16} />
-                                            </div>
-                                            <div>
-                                                <p className="font-bold text-sm text-gray-800">{p.full_name}</p>
-                                                <p className="text-xs text-gray-500 line-clamp-1">{p.pathology || "Không có bệnh lý nền"}</p>
-                                            </div>
-                                        </div>
-                                        {selectedPatientId === p.id && (
-                                            <div className="absolute top-2 right-2 text-orange-600">
-                                                <CheckCircle2 size={16} />
-                                            </div>
-                                        )}
-                                    </div>
-                                ))}
-                            </div>
-                        ) : (
-                            <div className="text-center py-4">
-                                <p className="text-sm text-gray-500 mb-2">Bạn chưa có hồ sơ người thân nào.</p>
-                                <Button asChild variant="outline" size="sm">
-                                    <Link to="/profile">Tạo hồ sơ ngay</Link>
-                                </Button>
-                            </div>
+                        {isCustomer && !isJobAssigned && (
+                            <Button onClick={handleAcceptJob} size="sm" className="bg-green-600 hover:bg-green-700 text-white text-xs px-3 h-8 shadow-sm">
+                                <CheckCircle size={14} className="mr-1" /> Duyệt
+                            </Button>
                         )}
                     </div>
-                  )}
-                  {/* --------------------------------------- */}
 
-                  <Button type="submit" className="w-full h-12 text-lg font-semibold bg-[#e67e22] hover:bg-[#d35400] shadow-md">
-                    Gửi Yêu Cầu Tư Vấn
-                  </Button>
-                </form>
-              </CardContent>
-            </Card>
+                    {isJobAssigned && (
+                        <div className={`mt-2 py-1 px-3 rounded text-center text-xs font-bold ${isAssignedToThisStaff ? 'bg-green-50 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
+                            {isAssignedToThisStaff ? "✅ Đang hợp tác" : "🔒 Đã giao người khác"}
+                        </div>
+                    )}
+                </div>
 
-            {/* Support Info (Giữ nguyên) */}
-            <div>
-              <Card className="border-border mb-6">
-                <CardContent className="p-8">
-                  <h3 className="text-2xl font-bold text-foreground mb-6">Kênh Hỗ Trợ</h3>
-                  <div className="space-y-4 mb-6">
-                    {supportChannels.map((channel, index) => (
-                      <div key={index} className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-lg bg-accent/10 flex items-center justify-center text-accent">{channel.icon}</div>
-                        <span className="text-foreground font-medium">{channel.text}</span>
-                      </div>
-                    ))}
-                  </div>
-                  <p className="text-muted-foreground">Chúng tôi luôn sẵn sàng hỗ trợ bạn qua nhiều kênh khác nhau.</p>
-                </CardContent>
-              </Card>
+                <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-[#f5f7fb] scroll-smooth">
+                    {messages.length === 0 && (
+                        <div className="flex flex-col items-center justify-center h-full text-gray-400 opacity-60">
+                            <div className="bg-gray-200 p-4 rounded-full mb-2"><Briefcase size={32} /></div>
+                            <p className="text-sm">Bắt đầu trao đổi công việc...</p>
+                        </div>
+                    )}
 
-              <Card className="border-border bg-gradient-to-br from-accent/10 to-accent/5">
-                <CardContent className="p-8">
-                   <h3 className="text-xl font-bold text-foreground mb-4">Cần Hỗ Trợ Khẩn Cấp?</h3>
-                   <a href="tel:0372054418" className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-accent hover:bg-accent/90 text-accent-foreground font-semibold rounded-lg w-full">
-                     <Phone className="w-5 h-5" /> Gọi: 0372054418
-                   </a>
-                </CardContent>
-              </Card>
+                    {messages.map((msg) => {
+                        const isMe = msg.sender_id === user?.id;
+                        return (
+                            <div key={msg.id} className={`flex w-full ${isMe ? 'justify-end' : 'justify-start'}`}>
+                                <div className={`max-w-[75%] px-4 py-2 rounded-2xl text-sm shadow-sm break-words ${isMe
+                                        ? 'bg-blue-600 text-white rounded-br-none'
+                                        : 'bg-white text-gray-800 border border-gray-200 rounded-bl-none'
+                                    }`}>
+                                    {msg.content}
+                                    <p className={`text-[10px] mt-1 text-right ${isMe ? 'text-blue-200' : 'text-gray-400'}`}>
+                                        {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                    </p>
+                                </div>
+                            </div>
+                        );
+                    })}
+                    <div ref={messagesEndRef} className="h-1" />
+                </div>
+
+                <div className="shrink-0 bg-white p-3 border-t">
+                    {(!isJobAssigned || isAssignedToThisStaff) ? (
+                        <div className="flex gap-2 items-end bg-gray-50 p-2 rounded-xl border focus-within:border-blue-400 focus-within:ring-1 focus-within:ring-blue-100 transition-all">
+                            <Input
+                                value={newMessage}
+                                // Khai báo kiểu cho event Input Change
+                                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewMessage(e.target.value)}
+                                // Khai báo kiểu cho event KeyDown
+                                onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => e.key === 'Enter' && handleSend()}
+                                placeholder="Nhập tin nhắn..."
+                                className="flex-1 border-none bg-transparent focus-visible:ring-0 shadow-none px-2 h-10"
+                                autoComplete="off"
+                            />
+                            <Button onClick={handleSend} size="icon" className="bg-blue-600 hover:bg-blue-700 h-10 w-10 rounded-lg shrink-0 transition-transform active:scale-95">
+                                <Send size={18} />
+                            </Button>
+                        </div>
+                    ) : (
+                        <div className="text-center text-gray-400 text-xs py-2 bg-gray-50 rounded-lg">
+                            Cuộc hội thoại đã kết thúc.
+                        </div>
+                    )}
+                </div>
             </div>
-          </div>
         </div>
-      </section>
-    </div>
-  );
+    );
 };
 
-export default Contact;
+export default JobChat;

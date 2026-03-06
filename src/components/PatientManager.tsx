@@ -1,27 +1,46 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/lib/AuthContext';
 import { Trash2, Edit, Plus, User, UserCheck, MessageSquare, Clock, MapPin, CheckCircle } from 'lucide-react';
 import { toast } from "sonner";
-import { useNavigate } from "react-router-dom"; // Import useNavigate để chuyển trang
+import { useNavigate } from "react-router-dom";
 
 // --- TYPES ---
-type Patient = {
+interface Patient {
   id: string;
   full_name: string;
   dob: string;
   pathology: string;
   notes: string;
-};
+}
+
+// KHAI BÁO THÊM INTERFACE ĐỂ XÓA LỖI ANY
+interface Staff {
+  id: string;
+  full_name: string;
+  phone: string;
+  specialties?: string;
+}
+
+interface JobRequest {
+  id: string;
+  name: string;
+  address: string;
+  message: string;
+  status: string;
+  created_at: string;
+  assigned_staff_id?: string;
+  assigned_staff?: { full_name: string; phone?: string };
+}
 
 export const PatientManager = () => {
   const { user } = useAuth();
-  const navigate = useNavigate(); // Hook chuyển trang
+  const navigate = useNavigate();
   
   // --- STATE 1: QUẢN LÝ YÊU CẦU & ỨNG VIÊN ---
-  const [requests, setRequests] = useState<any[]>([]);
-  const [applicants, setApplicants] = useState<Record<string, any[]>>({});
+  const [requests, setRequests] = useState<JobRequest[]>([]);
+  const [applicants, setApplicants] = useState<Record<string, Staff[]>>({});
   
   // --- STATE 2: QUẢN LÝ HỒ SƠ BỆNH NHÂN ---
   const [patients, setPatients] = useState<Patient[]>([]);
@@ -33,66 +52,47 @@ export const PatientManager = () => {
   const [pathology, setPathology] = useState('');
   const [notes, setNotes] = useState('');
 
-  useEffect(() => {
-    if (user) {
-        fetchPatients();
-        fetchRequests();
-        
-        // Realtime: Tự động cập nhật khi có nhân viên ứng tuyển mới
-        const channel = supabase
-        .channel('customer_dashboard_realtime')
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'job_applications' }, () => {
-            fetchRequests(); // Tải lại để thấy ứng viên mới
-        })
-        .subscribe();
-
-        return () => { supabase.removeChannel(channel); };
-    }
-  }, [user]);
-
   // ==========================================
   // PHẦN 1: LOGIC QUẢN LÝ YÊU CẦU & DUYỆT ĐƠN
   // ==========================================
 
-  const fetchRequests = async () => {
-    // 1. Lấy đơn hàng của khách
-    const { data: jobs } = await supabase
-        .from('contacts')
-        .select('*, assigned_staff:profiles(full_name, phone)')
-        .eq('user_id', user?.id) // Lọc theo người tạo đơn
-        .order('created_at', { ascending: false });
-    
-    if (jobs) {
-        setRequests(jobs);
-        // 2. Tìm các đơn chưa có người nhận để tải danh sách ứng viên
-        const openJobIds = jobs.filter(j => !j.assigned_staff_id).map(j => j.id);
-        if (openJobIds.length > 0) {
-            fetchApplicants(openJobIds);
-        }
-    }
-  };
-
-  const fetchApplicants = async (jobIds: string[]) => {
+  const fetchApplicants = useCallback(async (jobIds: string[]) => {
       const { data } = await supabase
         .from('job_applications')
         .select('job_id, staff:profiles(id, full_name, phone, specialties)')
         .in('job_id', jobIds);
       
       if (data) {
-          const appMap: Record<string, any[]> = {};
+          const appMap: Record<string, Staff[]> = {};
           data.forEach(item => {
               if (!appMap[item.job_id]) appMap[item.job_id] = [];
-              appMap[item.job_id].push(item.staff);
+              appMap[item.job_id].push(item.staff as unknown as Staff);
           });
           setApplicants(appMap);
       }
-  };
+  }, []);
 
-  const handleApproveStaff = async (jobId: string, staff: any) => {
+  const fetchRequests = useCallback(async () => {
+    if (!user) return;
+    const { data: jobs } = await supabase
+        .from('contacts')
+        .select('*, assigned_staff:profiles(full_name, phone)')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false });
+    
+    if (jobs) {
+        setRequests(jobs as JobRequest[]);
+        const openJobIds = jobs.filter(j => !j.assigned_staff_id).map(j => j.id);
+        if (openJobIds.length > 0) {
+            fetchApplicants(openJobIds);
+        }
+    }
+  }, [user, fetchApplicants]);
+
+  const handleApproveStaff = async (jobId: string, staff: Staff) => {
       if (!confirm(`Bạn xác nhận chọn nhân viên ${staff.full_name}?`)) return;
 
       try {
-          // 1. Gán nhân viên cho đơn hàng
           const { error } = await supabase.from('contacts').update({
               assigned_staff_id: staff.id,
               status: 'processing'
@@ -100,20 +100,19 @@ export const PatientManager = () => {
 
           if (error) throw error;
 
-          // 2. Gửi thông báo chat
           await supabase.from('chat_messages').insert({
               sender_id: user?.id,
               receiver_id: staff.id,
-              contact_id: jobId, // Gắn ID Job vào tin nhắn
+              contact_id: jobId, 
               content: "✅ Tôi đã chấp thuận bạn cho công việc này. Hãy bắt đầu nhé!",
               is_staff_reply: false
           });
 
           toast.success("Đã giao việc thành công!");
-          fetchRequests(); // Refresh lại
+          fetchRequests(); 
 
-      } catch (err: any) {
-          toast.error("Lỗi: " + err.message);
+      } catch (err: unknown) {
+          if (err instanceof Error) toast.error("Lỗi: " + err.message);
       }
   };
 
@@ -121,7 +120,7 @@ export const PatientManager = () => {
   // PHẦN 2: LOGIC QUẢN LÝ HỒ SƠ BỆNH NHÂN
   // ==========================================
 
-  const fetchPatients = async () => {
+  const fetchPatients = useCallback(async () => {
     if (!user) return;
     const { data, error } = await supabase
       .from('patient_records')
@@ -129,9 +128,27 @@ export const PatientManager = () => {
       .eq('user_id', user.id)
       .order('created_at', { ascending: false });
     
-    if (!error && data) setPatients(data);
+    if (!error && data) setPatients(data as Patient[]);
     setLoading(false);
-  };
+  }, [user]);
+
+  // Đã thêm dependencies vào useEffect
+  useEffect(() => {
+    if (user) {
+        fetchPatients();
+        fetchRequests();
+        
+        const channel = supabase
+        .channel('customer_dashboard_realtime')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'job_applications' }, () => {
+            fetchRequests(); 
+        })
+        .subscribe();
+
+        return () => { supabase.removeChannel(channel); };
+    }
+  }, [user, fetchPatients, fetchRequests]);
+
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -149,8 +166,8 @@ export const PatientManager = () => {
         }
         resetForm();
         fetchPatients();
-    } catch (err: any) {
-        toast.error("Lỗi: " + err.message);
+    } catch (err: unknown) {
+        if (err instanceof Error) toast.error("Lỗi: " + err.message);
     }
   };
 
@@ -215,14 +232,14 @@ export const PatientManager = () => {
                               </div>
                           </div>
 
-                          {/* KHU VỰC DUYỆT ỨNG VIÊN (Chỉ hiện khi chưa giao việc) */}
+                          {/* KHU VỰC DUYỆT ỨNG VIÊN */}
                           {!req.assigned_staff_id && applicants[req.id] && applicants[req.id].length > 0 && (
                               <div className="mt-4 pt-4 border-t border-dashed border-gray-300">
                                   <p className="text-sm font-bold text-blue-600 mb-3 flex items-center gap-2">
                                       <CheckCircle size={16}/> Có {applicants[req.id].length} nhân viên muốn nhận việc này:
                                   </p>
                                   <div className="grid gap-2">
-                                      {applicants[req.id].map((staff: any) => (
+                                      {applicants[req.id].map((staff) => (
                                           <div key={staff.id} className="flex justify-between items-center bg-white p-3 rounded-lg border hover:shadow-md transition">
                                               <div>
                                                   <p className="font-bold text-gray-800 flex items-center gap-2"><User size={16}/> {staff.full_name}</p>
@@ -231,7 +248,6 @@ export const PatientManager = () => {
                                               
                                               {/* CÁC NÚT HÀNH ĐỘNG */}
                                               <div className="flex gap-2">
-                                                  {/* Nút Chat */}
                                                   <Button 
                                                       size="sm" 
                                                       variant="outline" 
@@ -240,8 +256,6 @@ export const PatientManager = () => {
                                                   >
                                                       <MessageSquare size={14} className="mr-1"/> Chat
                                                   </Button>
-
-                                                  {/* Nút Chấp thuận */}
                                                   <Button 
                                                       size="sm" 
                                                       className="bg-blue-600 hover:bg-blue-700 h-8" 

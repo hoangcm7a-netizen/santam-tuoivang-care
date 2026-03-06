@@ -1,97 +1,133 @@
+import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/lib/AuthContext";
 import Navigation from "@/components/Navigation";
+import { supabase } from "@/lib/supabase";
+import { Wallet, History, Clock, MapPin, Plus } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
-import { CalendarDays, FileVideo, Users, History, Phone } from "lucide-react";
+
+// KHAI BÁO KIỂU DỮ LIỆU
+interface Job {
+    id: string;
+    name: string;
+    address: string;
+    status: string;
+    assigned_staff?: { full_name: string };
+}
 
 const CustomerDashboard = () => {
-  const { profile } = useAuth();
+    const { user, profile } = useAuth();
+    const [activeJobs, setActiveJobs] = useState<Job[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [currentBalance, setCurrentBalance] = useState(0);
 
-  const menuItems = [
-    {
-      title: "ĐẶT LỊCH NGAY",
-      desc: "Tìm điều dưỡng chăm sóc",
-      icon: <CalendarDays size={40} />,
-      link: "/contact", // Dẫn đến trang đặt lịch
-      color: "bg-orange-500",
-      hover: "hover:bg-orange-600",
-      span: "col-span-2", // Ô to nhất
-    },
-    {
-      title: "HỒ SƠ NGƯỜI THÂN",
-      desc: "Quản lý bệnh án & Thông tin",
-      icon: <Users size={32} />,
-      link: "/profile", // Dẫn đến trang quản lý hồ sơ
-      color: "bg-blue-500",
-      hover: "hover:bg-blue-600",
-      span: "col-span-1",
-    },
-    {
-      title: "HỘP THƯ HỖ TRỢ",
-      desc: "Xem phản hồi từ bác sĩ",
-      icon: <FileVideo size={32} />,
-      link: "/messages",
-      color: "bg-green-500",
-      hover: "hover:bg-green-600",
-      span: "col-span-1",
-    },
-    {
-      title: "LỊCH SỬ & THANH TOÁN",
-      desc: "Xem lại các ca đã đặt",
-      icon: <History size={32} />,
-      link: "/history", // (Trang này sẽ làm sau)
-      color: "bg-purple-500",
-      hover: "hover:bg-purple-600",
-      span: "col-span-2 md:col-span-1", // Mobile thì to, PC thì nhỏ
-    },
-  ];
+    // Bọc hàm fetch vào useCallback để tránh lỗi missing dependency
+    const fetchDashboardData = useCallback(async () => {
+        if (!user) return;
+        const { data } = await supabase
+            .from('contacts')
+            .select('*, assigned_staff:profiles(full_name)')
+            .eq('user_id', user.id)
+            .neq('status', 'done')
+            .order('created_at', { ascending: false });
 
-  return (
-    <div className="min-h-screen bg-gray-50 pb-20">
-      <Navigation />
-      
-      <div className="container mx-auto px-4 pt-28">
-        {/* Header Chào mừng */}
-        <div className="mb-8">
-          <h1 className="text-2xl font-bold text-gray-800">
-            Xin chào, {profile?.full_name}! 👋
-          </h1>
-          <p className="text-gray-500">Bạn muốn làm gì hôm nay?</p>
+        if (data) setActiveJobs(data as Job[]);
+        setLoading(false);
+    }, [user]);
+
+    useEffect(() => {
+        if (user) {
+            setCurrentBalance(profile?.wallet_balance || 0);
+            fetchDashboardData();
+
+            const profileChannel = supabase.channel('dashboard_profile_changes')
+                .on('postgres_changes', {
+                    event: 'UPDATE',
+                    schema: 'public',
+                    table: 'profiles',
+                    filter: `id=eq.${user.id}`
+                }, (payload: Record<string, unknown>) => {
+                    // Loại bỏ ngầm định any bằng cách ép kiểu rõ ràng
+                    const updatedProfile = payload.new as { wallet_balance: number };
+                    setCurrentBalance(updatedProfile.wallet_balance);
+                }).subscribe();
+
+            return () => { supabase.removeChannel(profileChannel); };
+        }
+    }, [user, profile, fetchDashboardData]); // Đã thêm fetchDashboardData vào dependencies
+
+    return (
+        <div className="min-h-screen bg-gray-50 pb-20 relative">
+            <Navigation />
+
+            <div className="bg-white pt-24 pb-6 px-4 shadow-sm border-b">
+                <div className="container mx-auto">
+                    <h1 className="text-2xl font-bold text-gray-800">Xin chào, {profile?.full_name}! 👋</h1>
+                    <p className="text-gray-500 text-sm mt-1">Hôm nay bạn cần hỗ trợ gì không?</p>
+                </div>
+            </div>
+
+            <div className="container mx-auto px-4 mt-6 space-y-6">
+                <div className="bg-gradient-to-r from-orange-500 to-red-500 rounded-2xl p-6 text-white shadow-lg relative overflow-hidden">
+                    <div className="relative z-10">
+                        <p className="text-orange-100 text-sm font-medium flex items-center gap-2">
+                            <Wallet size={16} /> Số dư ví hiện tại
+                        </p>
+                        <h2 className="text-4xl font-bold mt-2 mb-4">
+                            {currentBalance.toLocaleString()} đ
+                        </h2>
+                        <Link to="/wallet">
+                            <Button variant="secondary" size="sm" className="text-orange-700 bg-white hover:bg-gray-100 font-bold border-none">
+                                <History size={16} className="mr-2" /> Quản lý Ví & Lịch sử
+                            </Button>
+                        </Link>
+                    </div>
+                    <Wallet size={120} className="absolute -right-6 -bottom-10 text-white/10 rotate-12" />
+                </div>
+
+                <div>
+                    <div className="flex justify-between items-center mb-4">
+                        <h3 className="text-lg font-bold text-gray-800 flex items-center gap-2">
+                            <Clock className="text-blue-600" /> Đơn hàng đang xử lý
+                        </h3>
+                        <Link to="/contact">
+                            <Button size="sm" className="bg-green-600 hover:bg-green-700 h-8">
+                                <Plus size={16} className="mr-1" /> Đặt lịch mới
+                            </Button>
+                        </Link>
+                    </div>
+
+                    {loading ? <p>Đang tải...</p> : activeJobs.length === 0 ? (
+                        <div className="bg-white p-8 rounded-xl border border-dashed text-center">
+                            <p className="text-gray-400 mb-2">Hiện không có đơn hàng nào đang thực hiện.</p>
+                            <Link to="/contact" className="text-blue-600 font-bold hover:underline">Đặt lịch ngay &rarr;</Link>
+                        </div>
+                    ) : (
+                        <div className="space-y-4">
+                            {activeJobs.map(job => (
+                                <div key={job.id} className="bg-white p-5 rounded-xl shadow-sm border border-l-4 border-l-blue-500 hover:shadow-md transition">
+                                    <div className="flex justify-between items-start">
+                                        <div>
+                                            <h4 className="font-bold text-lg text-gray-800">{job.name}</h4>
+                                            <p className="text-sm text-gray-500 flex items-center gap-1 mt-1"><MapPin size={14} /> {job.address}</p>
+                                            <p className="text-sm text-gray-500 mt-1">
+                                                Trạng thái: <span className="text-blue-600 font-bold">
+                                                    {job.assigned_staff ? `Đang thực hiện bởi ${job.assigned_staff.full_name}` : 'Đang tìm người...'}
+                                                </span>
+                                            </p>
+                                        </div>
+                                        <Link to={`/messages`}>
+                                            <Button variant="outline" size="sm">Chi tiết</Button>
+                                        </Link>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
+            </div>
         </div>
-
-        {/* Grid Menu (Các ô gạch) */}
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-          {menuItems.map((item, index) => (
-            <Link
-              key={index}
-              to={item.link}
-              className={`${item.span} ${item.color} ${item.hover} text-white rounded-2xl p-6 shadow-lg transition-transform transform hover:-translate-y-1 flex flex-col justify-between min-h-[160px] relative overflow-hidden group`}
-            >
-              {/* Trang trí nền */}
-              <div className="absolute -right-4 -bottom-4 opacity-20 transform rotate-12 group-hover:scale-110 transition-transform">
-                {item.icon}
-              </div>
-
-              <div className="relative z-10">
-                <div className="mb-4 opacity-90">{item.icon}</div>
-                <h3 className="text-xl font-bold uppercase leading-tight">{item.title}</h3>
-                <p className="text-sm opacity-90 mt-1">{item.desc}</p>
-              </div>
-            </Link>
-          ))}
-        </div>
-
-        {/* Nút Gọi Hỗ Trợ Khẩn Cấp (Nổi góc màn hình) */}
-        <a 
-            href="tel:0372054418"
-            className="fixed bottom-6 right-6 bg-red-600 text-white p-4 rounded-full shadow-2xl animate-bounce hover:bg-red-700 flex items-center gap-2 z-50"
-        >
-            <Phone size={24} />
-            <span className="font-bold hidden md:inline">GỌI HỖ TRỢ</span>
-        </a>
-
-      </div>
-    </div>
-  );
+    );
 };
 
 export default CustomerDashboard;
