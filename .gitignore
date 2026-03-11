@@ -23,3 +23,14 @@ dist-ssr
 *.sln
 *.sw?
 .vs/
+
+# Bảo mật thông tin kết nối Supabase
+.env
+.env.local
+.env.*
+!.env.example
+
+# Tạm dừng theo dõi các file cài đặt của Visual Studio
+.vs/
+[Bb]in/
+[Oo]bj/

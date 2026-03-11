@@ -7,6 +7,6 @@
     "\\src\\components",
     "\\src\\pages"
   ],
-  "SelectedNode": "\\tailwind.config.ts",
+  "SelectedNode": "\\src\\pages\\JobChat.tsx",
   "PreviewInSolutionExplorer": false
 }
