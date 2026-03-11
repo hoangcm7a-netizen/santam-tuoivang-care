@@ -133,17 +133,30 @@ const JobChat = () => {
         }
     }, [user, jobId, partnerId, fetchJobInfo, fetchPartnerInfo, fetchMessages, markAsRead, scrollToBottom]);
 
+    // --- ĐÃ FIX HÀM GỬI TIN NHẮN TẠI ĐÂY ---
     const handleSend = async (contentOverride?: string) => {
         const content = contentOverride || newMessage;
         if (!content.trim() || !user || !partnerId || !jobId) return;
 
-        setNewMessage("");
+        setNewMessage(""); // Xóa trắng ô input ngay lập tức cho mượt
+
         try {
-            await supabase.from('chat_messages').insert({
+            const { data, error } = await supabase.from('chat_messages').insert({
                 sender_id: user.id, receiver_id: partnerId, contact_id: jobId,
                 content: content, is_staff_reply: profile?.role === 'staff'
-            });
-        } catch (err: unknown) { toast.error("Gửi tin nhắn thất bại"); }
+            }).select(); // Yêu cầu Supabase trả về tin nhắn vừa tạo
+
+            if (error) throw error;
+
+            // Cập nhật tin nhắn vừa gửi lên màn hình ngay lập tức
+            if (data && data.length > 0) {
+                setMessages(prev => [...prev, data[0] as Message]);
+                scrollToBottom();
+            }
+
+        } catch (err: unknown) {
+            toast.error("Gửi tin nhắn thất bại");
+        }
     };
 
     const handleSendContract = () => {

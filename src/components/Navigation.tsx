@@ -7,7 +7,6 @@ import { useAuth } from '@/lib/AuthContext';
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
 
-// Định nghĩa nhanh type cho Tin nhắn tránh lỗi TS
 interface BaseMessage {
     contact_id: string;
     sender_id: string;
@@ -20,7 +19,6 @@ const Navigation = () => {
     const navigate = useNavigate();
     const { user, profile, signOut } = useAuth();
 
-    // Tối ưu hóa: Dùng useRef để lưu URL hiện tại, giúp useEffect không bị re-run
     const pathnameRef = useRef(location.pathname);
     useEffect(() => {
         pathnameRef.current = location.pathname;
@@ -38,7 +36,6 @@ const Navigation = () => {
             }, (payload) => {
                 const newMsg = payload.new as BaseMessage;
 
-                // Sử dụng pathname từ ref thay vì phụ thuộc mảng
                 if (pathnameRef.current.includes(`/job-chat/${newMsg.contact_id}/${newMsg.sender_id}`)) {
                     return;
                 }
@@ -54,7 +51,7 @@ const Navigation = () => {
             }).subscribe();
 
         return () => { supabase.removeChannel(channel); };
-    }, [user, navigate]); // Đã xóa location.pathname khỏi dependency
+    }, [user, navigate]);
 
     const getHomeLink = () => {
         if (!user || !profile) return "/";
@@ -71,7 +68,6 @@ const Navigation = () => {
     };
 
     const homeLink = getHomeLink();
-    const isInternalUser = profile?.role === 'staff' || profile?.role === 'admin';
     const isCustomer = profile?.role === 'customer';
 
     const links = [
@@ -108,8 +104,8 @@ const Navigation = () => {
                                 key={link.path}
                                 to={link.path}
                                 className={`text-sm font-bold transition-all duration-200 hover:text-orange-600 ${isActive(link.path)
-                                        ? "text-orange-600 scale-105"
-                                        : "text-gray-600"
+                                    ? "text-orange-600 scale-105"
+                                    : "text-gray-600"
                                     }`}
                             >
                                 {link.name}
@@ -196,8 +192,8 @@ const Navigation = () => {
                                     key={link.path}
                                     to={link.path}
                                     className={`block px-4 py-3 rounded-lg font-medium transition-colors ${isActive(link.path)
-                                            ? "bg-orange-50 text-orange-700"
-                                            : "text-gray-600 hover:bg-gray-50"
+                                        ? "bg-orange-50 text-orange-700"
+                                        : "text-gray-600 hover:bg-gray-50"
                                         }`}
                                     onClick={() => setIsOpen(false)}
                                 >
